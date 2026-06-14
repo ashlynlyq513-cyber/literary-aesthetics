@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: literary-aesthetics-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MODEL_API_BASE
+        value: https://ckff.dev/v1
+      - key: MODEL_NAME
+        value: [gcli转] gemini-3.1-flash-lite-preview
+      - key: MODEL_API_KEY
+        sync: false

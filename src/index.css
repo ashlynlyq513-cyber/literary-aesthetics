@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Georgia", "Noto Serif SC", "EB Garamond", serif;
+  --font-sans: "Helvetica Neue", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --color-ink-dark: #2C2C2B;
+  --color-ink-mid: #4A4A48;
+  --color-paper-light: #FDFCF8;
+  --color-paper-beige: #F9F8F3;
+}
+
+/* Web aesthetics tuning for literary style */
+body {
+  font-family: var(--font-sans);
+  background-color: #FDFCF8;
+  color: #2C2C2B;
+}
+
+::selection {
+  background-color: rgba(140, 146, 127, 0.2);
+  color: #2C2C2B;
+}
+
+/* Elegant scrollbars fitting natural paper textures */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FDFCF8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E8E8E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #CCD5AE;
+}
+
+/* Exquisite color blocks for lingering flavors featuring Artistic Flair gradients */
+.flavor-bg-echo {
+  background: linear-gradient(135deg, #F5EBE0 0%, #E3D5CA 100%);
+  border: 1px solid rgba(140, 146, 127, 0.2);
+}
+
+.flavor-bg-bitter {
+  background: linear-gradient(135deg, #E6EBE0 0%, #CCD5AE 100%);
+  border: 1px solid rgba(140, 146, 127, 0.2);
+}
+
+.flavor-bg-crisp {
+  background: linear-gradient(135deg, #D8E2DC 0%, #B8C0B0 100%);
+  border: 1px solid rgba(140, 146, 127, 0.2);
+}
+
+.flavor-bg-smoky {
+  background: linear-gradient(135deg, #ECEAEB 0%, #DDD9DB 100%);
+  border: 1px solid rgba(140, 146, 127, 0.2);
+}
+
+
