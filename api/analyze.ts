@@ -1,4 +1,4 @@
-import { runAnalyze } from "./_shared.ts";
+import { runAnalyze } from "./shared.ts";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -8,7 +8,7 @@ export default async function handler(req: any, res: any) {
 
   const result = await runAnalyze(req.body);
   if (result?.fallback) {
-    res.status(500).json(result);
+    res.status(200).json(result);
     return;
   }
   res.status(200).json(result);
