@@ -3,7 +3,6 @@ import path from "path";
 import os from "os";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { Type } from "@google/genai";
 
 // Load environment variables
 dotenv.config();
@@ -13,6 +12,12 @@ const PORT = Number(process.env.PORT || 3000);
 const MODEL_API_BASE = process.env.MODEL_API_BASE || "https://ckff.dev/v1";
 const MODEL_API_KEY = process.env.MODEL_API_KEY || "";
 const MODEL_NAME = process.env.MODEL_NAME || "[gcli转] gemini-3.1-flash-lite-preview";
+const Type = {
+  OBJECT: "object",
+  STRING: "string",
+  INTEGER: "integer",
+  ARRAY: "array",
+} as const;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
