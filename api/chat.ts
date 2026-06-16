@@ -1,4 +1,4 @@
-import { runChat } from "./_shared";
+import { runChat } from "./_shared.ts";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
