@@ -1,14 +1,6 @@
 # literary-aesthetics
 
-当前根目录是你正在继续开发的主项目。
-
-如果后续要吸收 `samiytaa/literary-aesthetics` 的改进版，不要直接覆盖根目录文件，先把对方代码放进 `upstream/` 下单独子目录，再逐个文件对比合并。
-
-当前目录分工：
-
-- 根目录：你正在维护的主项目
-- `archive/`：历史快照、旧整包备份
-- `upstream/`：上游改版导入缓冲区
+Vite 前端与 Vercel Functions 后端一体部署。
 
 ## 本地开发
 
@@ -23,12 +15,12 @@ npm run dev
 npm run dev:lan
 ```
 
-## 部署结构
+## Vercel 部署
 
-- GitHub Pages：静态前端
-- Vercel Functions：`api/` 目录中的后端代理
+在 Vercel 项目中配置以下环境变量：
 
-## 需要配置
+- `MODEL_API_BASE`
+- `MODEL_API_KEY`
+- `MODEL_NAME`
 
-- Vercel 环境变量：`MODEL_API_BASE`、`MODEL_API_KEY`、`MODEL_NAME`
-- GitHub 仓库 Secret：`VITE_API_BASE_URL`
+前端默认请求同域 `/api/analyze` 与 `/api/chat`，无需把密钥暴露到 `VITE_*` 变量。

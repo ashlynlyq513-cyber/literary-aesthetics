@@ -24,8 +24,8 @@
     "noEmit": true
   },
   "exclude": [
-    "archive",
     "dist",
-    "node_modules"
+    "node_modules",
+    "literary-aesthetics-complete.jsx"
   ]
 }

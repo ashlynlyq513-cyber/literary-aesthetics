@@ -4,10 +4,8 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
-  const isGithubPages = process.env.GITHUB_ACTIONS === 'true';
-  const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] || 'literary-aesthetics';
   return {
-    base: isGithubPages ? `/${repoName}/` : '/',
+    base: '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

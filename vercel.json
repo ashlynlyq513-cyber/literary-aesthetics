@@ -1,7 +1,9 @@
 {
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "@vercel/node@5.3.24"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
-  }
+  ]
 }
