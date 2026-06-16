@@ -8,3 +8,10 @@ coverage/
 !.env.example
 .codex/
 .vscode/*.log
+archive/*.log
+upstream/*/node_modules/
+upstream/*/dist/
+upstream/*/.vercel/
+upstream/*/.env
+upstream/*/.env.local
+upstream/*/.env.production

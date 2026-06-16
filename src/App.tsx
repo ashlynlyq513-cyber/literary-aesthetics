@@ -86,8 +86,8 @@ const DETAIL_GROUPS: {
   },
 ];
 
-const buildDetailFallback = (label: string, score: DimensionScore, fallback: string) => {
-  return `${label}当前位于 ${score.value} 分区间。${score.desc}${fallback}`;
+const buildDetailFallback = (label: string, score: DimensionScore) => {
+  return `${label}当前位于 ${score.value} 分区间。${score.desc}`;
 };
 
 const getDimensionDetailGroups = (report: AestheticsReport) => {
@@ -96,9 +96,7 @@ const getDimensionDetailGroups = (report: AestheticsReport) => {
     dimensions: group.dimensions.map((dimension) => ({
       ...dimension,
       score: report.scores[dimension.scoreKey],
-      text:
-        report.details[dimension.detailKey] ||
-        buildDetailFallback(dimension.label, report.scores[dimension.scoreKey], dimension.fallback),
+      text: buildDetailFallback(dimension.label, report.scores[dimension.scoreKey]),
     })),
   }));
 };
@@ -524,7 +522,7 @@ export default function App() {
     topBar.style.marginBottom = "46px";
     topBar.style.paddingBottom = "14px";
     topBar.style.borderBottom = "1px solid rgba(44,44,43,0.12)";
-    topBar.innerHTML = `<div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;">Volume 04 // Sensory Anthology</div><div style="font-size:12px;letter-spacing:0.12em;">Archives 档案馆　INDEX　ABOUT</div>`;
+    topBar.innerHTML = `<div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;font-family:'Helvetica Neue', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;">文字风味轮</div><div style="font-size:12px;letter-spacing:0.12em;">Archives 档案馆　INDEX　ABOUT</div>`;
     header.appendChild(topBar);
 
     const brandStamp = document.createElement("div");
@@ -836,6 +834,628 @@ export default function App() {
     return paper;
   };
 
+  const EXPORT_WIDTH = 1080;
+  const MAX_EXPORT_BYTES = 1024 * 1024;
+  const EXPORT_MAIN_TITLE = "九维·余韵";
+  const EXPORT_SUBTITLE = "Nine-dimensional Afterglow • 文字审美模型";
+
+  const createMobileExportPaper = (modeLabel: string, title: string, subtitle: string) => {
+    const paper = document.createElement("div");
+    paper.style.width = `${EXPORT_WIDTH}px`;
+    paper.style.maxWidth = `${EXPORT_WIDTH}px`;
+    paper.style.minWidth = `${EXPORT_WIDTH}px`;
+    paper.style.boxSizing = "border-box";
+    paper.style.padding = "72px";
+    paper.style.background = "linear-gradient(180deg, #FCFBF6 0%, #F7F3EA 100%)";
+    paper.style.color = "#2C2C2B";
+    paper.style.fontFamily = "\"Georgia\", \"Noto Serif SC\", \"Songti SC\", serif";
+    paper.style.position = "relative";
+    paper.style.border = "1px solid rgba(44,44,43,0.1)";
+
+    const frame = document.createElement("div");
+    frame.style.position = "absolute";
+    frame.style.inset = "24px";
+    frame.style.border = "1px solid rgba(44,44,43,0.08)";
+    frame.style.pointerEvents = "none";
+    paper.appendChild(frame);
+
+    const topBar = document.createElement("div");
+    topBar.style.display = "flex";
+    topBar.style.justifyContent = "space-between";
+    topBar.style.alignItems = "center";
+    topBar.style.gap = "24px";
+    topBar.style.paddingBottom = "24px";
+    topBar.style.borderBottom = "1px solid rgba(44,44,43,0.12)";
+    topBar.style.marginBottom = "50px";
+    topBar.innerHTML = `<span style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;">文字风味轮</span><span style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:18px;letter-spacing:.16em;text-transform:uppercase;color:rgba(44,44,43,.56);">${modeLabel}</span>`;
+    paper.appendChild(topBar);
+
+    const brand = document.createElement("div");
+    brand.style.display = "flex";
+    brand.style.flexDirection = "column";
+    brand.style.alignItems = "center";
+    brand.style.gap = "8px";
+    brand.style.marginBottom = "18px";
+    brand.innerHTML = `
+      <div style="width:8px;height:8px;border-radius:999px;background:#8C927F;opacity:.68;"></div>
+      <div style="width:2px;height:54px;background:rgba(140,146,127,.22);"></div>
+      <div style="width:16px;height:16px;border-radius:999px;border:1px solid rgba(140,146,127,.8);display:flex;align-items:center;justify-content:center;">
+        <div style="width:6px;height:6px;border-radius:999px;background:#2C2C2B;opacity:.7;"></div>
+      </div>
+    `;
+    paper.appendChild(brand);
+
+    const titleWrap = document.createElement("div");
+    titleWrap.style.textAlign = "center";
+    titleWrap.style.marginBottom = "48px";
+    titleWrap.innerHTML = `
+      <div style="font-size:74px;line-height:1.08;font-weight:400;letter-spacing:.04em;">${title}</div>
+      <div style="font-size:34px;line-height:1.6;margin-top:16px;color:rgba(44,44,43,.72);">${subtitle}</div>
+      <div style="width:64px;height:1px;background:rgba(140,146,127,.35);margin:22px auto 0;"></div>
+    `;
+    paper.appendChild(titleWrap);
+
+    return paper;
+  };
+
+  const createMobileSection = (title: string, subtitle?: string) => {
+    const section = document.createElement("section");
+    section.style.border = "1px solid rgba(44,44,43,0.14)";
+    section.style.background = "rgba(255,255,255,0.6)";
+    section.style.borderRadius = "28px";
+    section.style.padding = "46px 46px 40px";
+    section.style.marginBottom = "24px";
+
+    const head = document.createElement("div");
+    head.style.display = "flex";
+    head.style.justifyContent = "space-between";
+    head.style.alignItems = "baseline";
+    head.style.gap = "16px";
+    head.style.paddingBottom = "18px";
+    head.style.borderBottom = "1px solid rgba(44,44,43,0.1)";
+
+    const titleNode = document.createElement("h3");
+    titleNode.textContent = title;
+    titleNode.style.margin = "0";
+    titleNode.style.fontSize = "40px";
+    titleNode.style.fontWeight = "600";
+    titleNode.style.letterSpacing = "0.04em";
+    head.appendChild(titleNode);
+
+    if (subtitle) {
+      const subtitleNode = document.createElement("span");
+      subtitleNode.textContent = subtitle;
+      subtitleNode.style.fontFamily = "\"Helvetica Neue\", Arial, sans-serif";
+      subtitleNode.style.fontSize = "20px";
+      subtitleNode.style.letterSpacing = "0.18em";
+      subtitleNode.style.textTransform = "uppercase";
+      subtitleNode.style.color = "rgba(44,44,43,.5)";
+      head.appendChild(subtitleNode);
+    }
+
+    section.appendChild(head);
+    return section;
+  };
+
+  const createTagChip = (text: string) => {
+    const chip = document.createElement("span");
+    chip.textContent = text;
+    chip.style.display = "inline-flex";
+    chip.style.alignItems = "center";
+    chip.style.justifyContent = "center";
+    chip.style.height = "58px";
+    chip.style.padding = "0 22px";
+    chip.style.borderRadius = "999px";
+    chip.style.border = "1px solid rgba(44,44,43,0.12)";
+    chip.style.background = "rgba(255,255,255,0.78)";
+    chip.style.fontSize = "26px";
+    chip.style.lineHeight = "1";
+    chip.style.letterSpacing = "0.04em";
+    chip.style.boxShadow = "0 6px 18px rgba(44,44,43,0.04)";
+    return chip;
+  };
+
+  const createBadgeChip = (text: string) => {
+    const badge = document.createElement("span");
+    badge.textContent = text;
+    badge.style.display = "inline-flex";
+    badge.style.alignItems = "center";
+    badge.style.justifyContent = "center";
+    badge.style.height = "68px";
+    badge.style.padding = "0 30px";
+    badge.style.borderRadius = "999px";
+    badge.style.border = "1px solid rgba(140,146,127,0.28)";
+    badge.style.background = "rgba(255,255,255,0.88)";
+    badge.style.fontSize = "32px";
+    badge.style.fontWeight = "600";
+    badge.style.letterSpacing = "0.08em";
+    badge.style.color = "#2C2C2B";
+    return badge;
+  };
+
+  const createRadarImage = (radarElement: HTMLElement | null, size: number) => {
+    if (!radarElement) {
+      return null;
+    }
+    const radarSvg = radarElement.querySelector("svg");
+    if (!radarSvg) {
+      return null;
+    }
+
+    const radarSvgClone = radarSvg.cloneNode(true) as SVGSVGElement;
+    radarSvgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    radarSvgClone.setAttribute("width", `${size}`);
+    radarSvgClone.setAttribute("height", `${size}`);
+
+    const radarImage = document.createElement("img");
+    radarImage.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(radarSvgClone.outerHTML)}`;
+    radarImage.alt = "Aesthetics Axis";
+    radarImage.style.display = "block";
+    radarImage.style.width = `${size}px`;
+    radarImage.style.height = `${size}px`;
+    radarImage.style.margin = "0 auto";
+    return radarImage;
+  };
+
+  const appendFooter = (paper: HTMLElement) => {
+    const footer = document.createElement("div");
+    footer.style.display = "flex";
+    footer.style.justifyContent = "flex-end";
+    footer.style.alignItems = "center";
+    footer.style.marginTop = "28px";
+    footer.style.paddingTop = "16px";
+    footer.style.borderTop = "1px solid rgba(44,44,43,0.12)";
+    footer.style.fontFamily = "\"Helvetica Neue\", Arial, sans-serif";
+    footer.style.fontSize = "20px";
+    footer.style.letterSpacing = "0.08em";
+    footer.style.color = "rgba(44,44,43,.72)";
+    footer.textContent = "@拟态余温Almost Human";
+    paper.appendChild(footer);
+  };
+
+  const appendScoreRows = (container: HTMLElement, scores: AestheticsReport["scores"]) => {
+    const list = document.createElement("div");
+    list.style.display = "flex";
+    list.style.flexDirection = "column";
+    list.style.gap = "20px";
+    list.style.marginTop = "30px";
+    const radarItems = mapScoresToRadar(scores);
+    const keys: (keyof AestheticsReport["scores"])[] = [
+      "temperature",
+      "density",
+      "transparency",
+      "lingering",
+      "tension",
+      "imagery",
+      "time",
+      "honesty",
+      "culture",
+    ];
+
+    keys.forEach((key, index) => {
+      const score = scores[key];
+      const row = document.createElement("div");
+      row.style.display = "grid";
+      row.style.gridTemplateColumns = "168px 1fr 92px";
+      row.style.gap = "16px";
+      row.style.alignItems = "center";
+
+      const label = document.createElement("div");
+      label.innerHTML = `<div style="font-size:26px;font-weight:600;">${radarItems[index].label}</div><div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:18px;letter-spacing:.08em;color:rgba(44,44,43,.5);">${getScoreDescriptor(key, score.value)}</div>`;
+
+      const barWrap = document.createElement("div");
+      barWrap.style.height = "16px";
+      barWrap.style.borderRadius = "999px";
+      barWrap.style.background = "rgba(44,44,43,.08)";
+      barWrap.style.overflow = "hidden";
+
+      const bar = document.createElement("div");
+      bar.style.height = "100%";
+      bar.style.width = `${score.value}%`;
+      bar.style.borderRadius = "999px";
+      bar.style.background = "linear-gradient(90deg, rgba(140,146,127,.45) 0%, rgba(44,44,43,.74) 100%)";
+      barWrap.appendChild(bar);
+
+      const value = document.createElement("div");
+      value.textContent = `${score.value}`;
+      value.style.fontSize = "26px";
+      value.style.textAlign = "right";
+      value.style.fontVariantNumeric = "tabular-nums";
+
+      row.appendChild(label);
+      row.appendChild(barWrap);
+      row.appendChild(value);
+      list.appendChild(row);
+    });
+
+    container.appendChild(list);
+  };
+
+  const appendDetailGroups = (paper: HTMLElement, report: AestheticsReport) => {
+    const detailSection = createMobileSection("维度细读", "Dimension Notes");
+    const groups = getDimensionDetailGroups(report);
+
+    groups.forEach((group) => {
+      const groupCard = document.createElement("div");
+      groupCard.style.marginTop = "22px";
+      groupCard.style.borderTop = "1px solid rgba(44,44,43,0.1)";
+      groupCard.style.paddingTop = "18px";
+
+      const groupTitle = document.createElement("div");
+      groupTitle.textContent = `${group.title} · ${group.subtitle}`;
+      groupTitle.style.fontSize = "24px";
+      groupTitle.style.fontWeight = "700";
+      groupTitle.style.letterSpacing = "0.06em";
+      groupTitle.style.color = "rgba(44,44,43,.72)";
+      groupCard.appendChild(groupTitle);
+
+      group.dimensions.forEach((dimension) => {
+        const item = document.createElement("div");
+        item.style.marginTop = "16px";
+        item.style.padding = "28px 30px";
+        item.style.borderRadius = "22px";
+        item.style.background = "rgba(255,255,255,0.72)";
+        item.style.border = "1px solid rgba(44,44,43,0.08)";
+
+        const title = document.createElement("div");
+        title.innerHTML = `<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:${dimension.accent};margin-right:10px;"></span><span style="font-size:28px;font-weight:600;">${dimension.label}</span><span style="margin-left:10px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;color:rgba(44,44,43,.5);">${dimension.score.value}</span>`;
+
+        const text = document.createElement("p");
+        text.textContent = dimension.text;
+        text.style.margin = "12px 0 0";
+        text.style.fontSize = "30px";
+        text.style.lineHeight = "1.78";
+        text.style.color = "rgba(44,44,43,.84)";
+
+        item.appendChild(title);
+        item.appendChild(text);
+        groupCard.appendChild(item);
+      });
+
+      detailSection.appendChild(groupCard);
+    });
+
+    paper.appendChild(detailSection);
+  };
+
+  const appendLiteraryVerdict = (
+    paper: HTMLElement,
+    verdict: AestheticsReport["literaryHistoryVerdict"] | ComparisonReport["literaryHistoryVerdict"],
+    tab: "A" | "B" | "C",
+  ) => {
+    if (!verdict) {
+      return;
+    }
+
+    const section = createMobileSection("文史余论", "Independent Verdict");
+    const items = tab === "B"
+      ? [
+          { title: "文本 A 的历史位置", text: (verdict as ComparisonReport["literaryHistoryVerdict"]).textAHistory },
+          { title: "文本 B 的历史位置", text: (verdict as ComparisonReport["literaryHistoryVerdict"]).textBHistory },
+          { title: "对照意义", text: (verdict as ComparisonReport["literaryHistoryVerdict"]).comparativeSignificance },
+        ]
+      : [
+          { title: "独异风格", text: (verdict as AestheticsReport["literaryHistoryVerdict"]).distinctStyle },
+          { title: "历史亮点", text: (verdict as AestheticsReport["literaryHistoryVerdict"]).historicalHighlight },
+          { title: "主要缺憾", text: (verdict as AestheticsReport["literaryHistoryVerdict"]).criticalDefect },
+        ];
+
+    items.forEach((item, index) => {
+      const card = document.createElement("div");
+      card.style.marginTop = index === 0 ? "22px" : "16px";
+      card.style.padding = "22px 24px";
+      card.style.borderRadius = "22px";
+      card.style.background = "rgba(255,255,255,0.72)";
+      card.style.border = "1px solid rgba(44,44,43,0.08)";
+
+      const title = document.createElement("div");
+      title.textContent = item.title;
+      title.style.fontSize = "24px";
+      title.style.fontWeight = "700";
+      title.style.letterSpacing = "0.06em";
+      title.style.color = "rgba(44,44,43,.68)";
+
+      const text = document.createElement("p");
+      text.textContent = item.text;
+      text.style.margin = "12px 0 0";
+      text.style.fontSize = "30px";
+      text.style.lineHeight = "1.76";
+      text.style.color = "rgba(44,44,43,.84)";
+
+      card.appendChild(title);
+      card.appendChild(text);
+      section.appendChild(card);
+    });
+
+    paper.appendChild(section);
+  };
+
+  const buildModeAMobileExportSnapshot = async () => {
+    if (!analysisReport) {
+      return null;
+    }
+
+    const paper = createMobileExportPaper("Mode A · 单卷品鉴", EXPORT_MAIN_TITLE, EXPORT_SUBTITLE);
+    const hero = createMobileSection("总体结论");
+    const heroHeading = document.createElement("div");
+    heroHeading.style.display = "flex";
+    heroHeading.style.flexWrap = "wrap";
+    heroHeading.style.alignItems = "center";
+    heroHeading.style.justifyContent = "space-between";
+    heroHeading.style.gap = "16px";
+    heroHeading.style.paddingBottom = "18px";
+    heroHeading.style.borderBottom = "1px solid rgba(44,44,43,0.1)";
+
+    const heroTitle = document.createElement("h3");
+    heroTitle.textContent = "总体结论";
+    heroTitle.style.margin = "0";
+    heroTitle.style.fontSize = "40px";
+    heroTitle.style.fontWeight = "600";
+    heroTitle.style.letterSpacing = "0.04em";
+    heroHeading.appendChild(heroTitle);
+    heroHeading.appendChild(createBadgeChip(analysisReport.lingeringType));
+
+    hero.innerHTML = "";
+    hero.appendChild(heroHeading);
+
+    const metaRow = document.createElement("div");
+    metaRow.style.display = "flex";
+    metaRow.style.flexWrap = "wrap";
+    metaRow.style.alignItems = "center";
+    metaRow.style.gap = "12px";
+    metaRow.style.marginTop = "24px";
+    analysisReport.tags.forEach((tag) => metaRow.appendChild(createTagChip(`#${tag}`)));
+    hero.appendChild(metaRow);
+
+    const summary = document.createElement("p");
+    summary.textContent = analysisReport.summary;
+    summary.style.margin = "22px 0 0";
+    summary.style.fontSize = "42px";
+    summary.style.lineHeight = "1.75";
+    summary.style.color = "rgba(44,44,43,.88)";
+    hero.appendChild(summary);
+    paper.appendChild(hero);
+
+    const radarSection = createMobileSection("九维坐标", "Axis Overview");
+    const radarImage = createRadarImage(tabARadarRef.current, 700);
+    if (radarImage) {
+      radarImage.style.marginTop = "20px";
+      radarSection.appendChild(radarImage);
+    }
+    appendScoreRows(radarSection, analysisReport.scores);
+    paper.appendChild(radarSection);
+
+    appendDetailGroups(paper, analysisReport);
+    appendLiteraryVerdict(paper, analysisReport.literaryHistoryVerdict, "A");
+    appendFooter(paper);
+    return paper;
+  };
+
+  const buildModeBExportSnapshot = async () => {
+    if (!compareReport) {
+      return null;
+    }
+
+    const paper = createMobileExportPaper("Mode B · 同框对照", EXPORT_MAIN_TITLE, EXPORT_SUBTITLE);
+    const hero = createMobileSection("总判断", "Final Verdict");
+    const verdict = document.createElement("p");
+    verdict.textContent = compareReport.finalVerdict;
+    verdict.style.margin = "22px 0 0";
+    verdict.style.fontSize = "42px";
+    verdict.style.lineHeight = "1.75";
+    verdict.style.color = "rgba(44,44,43,.88)";
+    hero.appendChild(verdict);
+    paper.appendChild(hero);
+
+    const compareCards = createMobileSection("文本摘要", "A / B");
+    const summaryWrap = document.createElement("div");
+    summaryWrap.style.display = "flex";
+    summaryWrap.style.flexDirection = "column";
+    summaryWrap.style.gap = "16px";
+    summaryWrap.style.marginTop = "22px";
+    [
+      { name: "文本 A", summary: compareReport.textA.summary, lingering: compareReport.textA.lingeringType, accent: "#2C2C2B" },
+      { name: "文本 B", summary: compareReport.textB.summary, lingering: compareReport.textB.lingeringType, accent: "#8C927F" },
+    ].forEach((item) => {
+      const card = document.createElement("div");
+      card.style.padding = "24px";
+      card.style.borderRadius = "22px";
+      card.style.background = "rgba(255,255,255,0.74)";
+      card.style.border = "1px solid rgba(44,44,43,0.08)";
+
+      const title = document.createElement("div");
+      title.innerHTML = `<span style="font-size:28px;font-weight:700;color:${item.accent};">${item.name}</span><span style="margin-left:10px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:20px;color:rgba(44,44,43,.48);">${item.lingering}</span>`;
+
+      const text = document.createElement("p");
+      text.textContent = item.summary;
+      text.style.margin = "12px 0 0";
+      text.style.fontSize = "30px";
+      text.style.lineHeight = "1.72";
+      text.style.color = "rgba(44,44,43,.84)";
+
+      card.appendChild(title);
+      card.appendChild(text);
+      summaryWrap.appendChild(card);
+    });
+    compareCards.appendChild(summaryWrap);
+    paper.appendChild(compareCards);
+
+    const radarSection = createMobileSection("差异投影", "Axis Contrast");
+    const radarImage = createRadarImage(tabBReportRef.current, 700);
+    if (radarImage) {
+      radarImage.style.marginTop = "20px";
+      radarSection.appendChild(radarImage);
+    }
+
+    const diffList = document.createElement("div");
+    diffList.style.display = "flex";
+    diffList.style.flexDirection = "column";
+    diffList.style.gap = "14px";
+    diffList.style.marginTop = "24px";
+    compareReport.comparison.forEach((item) => {
+      const row = document.createElement("div");
+      row.style.padding = "20px 22px";
+      row.style.borderRadius = "20px";
+      row.style.background = "rgba(255,255,255,0.72)";
+      row.style.border = "1px solid rgba(44,44,43,0.08)";
+
+      const head = document.createElement("div");
+      head.innerHTML = `<span style="font-size:28px;font-weight:600;">${item.dimension}</span><span style="float:right;font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;color:rgba(44,44,43,.56);">A ${item.valueA} / B ${item.valueB}</span>`;
+
+      const text = document.createElement("p");
+      text.textContent = item.desc;
+      text.style.margin = "10px 0 0";
+      text.style.fontSize = "30px";
+      text.style.lineHeight = "1.72";
+      text.style.color = "rgba(44,44,43,.8)";
+
+      row.appendChild(head);
+      row.appendChild(text);
+      diffList.appendChild(row);
+    });
+    radarSection.appendChild(diffList);
+    paper.appendChild(radarSection);
+
+    appendLiteraryVerdict(paper, compareReport.literaryHistoryVerdict, "B");
+    appendFooter(paper);
+    return paper;
+  };
+
+  const buildModeCExportSnapshot = async () => {
+    if (!diagnosisReport) {
+      return null;
+    }
+
+    const paper = createMobileExportPaper("Mode C · 创作诊断", EXPORT_MAIN_TITLE, EXPORT_SUBTITLE);
+    const hero = createMobileSection("核心诊断", "Diagnosis");
+    const badgeRow = document.createElement("div");
+    badgeRow.style.display = "flex";
+    badgeRow.style.flexWrap = "wrap";
+    badgeRow.style.alignItems = "center";
+    badgeRow.style.gap = "12px";
+    badgeRow.style.marginTop = "22px";
+    badgeRow.appendChild(createBadgeChip(`余韵 · ${diagnosisReport.lingeringType}`));
+    badgeRow.appendChild(createTagChip(`诚实度 ${diagnosisReport.scores.honesty.value}`));
+    hero.appendChild(badgeRow);
+
+    const summary = document.createElement("p");
+    summary.textContent = diagnosisReport.summary;
+    summary.style.margin = "22px 0 0";
+    summary.style.fontSize = "42px";
+    summary.style.lineHeight = "1.75";
+    summary.style.color = "rgba(44,44,43,.88)";
+    hero.appendChild(summary);
+    paper.appendChild(hero);
+
+    const radarSection = createMobileSection("诊断坐标", "Axis Reading");
+    const radarImage = createRadarImage(tabCReportRef.current, 700);
+    if (radarImage) {
+      radarImage.style.marginTop = "20px";
+      radarSection.appendChild(radarImage);
+    }
+    appendScoreRows(radarSection, diagnosisReport.scores);
+    paper.appendChild(radarSection);
+
+    if (diagnosisReport.suggestions?.length) {
+      const suggestionSection = createMobileSection("改写建议", "Rewrite Prompts");
+      diagnosisReport.suggestions.forEach((suggestion, index) => {
+        const card = document.createElement("div");
+        card.style.marginTop = index === 0 ? "22px" : "16px";
+        card.style.padding = "24px";
+        card.style.borderRadius = "22px";
+        card.style.background = "rgba(255,255,255,0.76)";
+        card.style.border = "1px solid rgba(44,44,43,0.08)";
+
+        const title = document.createElement("div");
+        title.textContent = `方案 ${index + 1} · ${suggestion.title}`;
+        title.style.fontSize = "28px";
+        title.style.fontWeight = "700";
+        title.style.color = "#8C927F";
+
+        const text = document.createElement("p");
+        text.textContent = suggestion.text;
+        text.style.margin = "12px 0 0";
+        text.style.fontSize = "30px";
+        text.style.lineHeight = "1.72";
+        text.style.color = "rgba(44,44,43,.82)";
+
+        const example = document.createElement("div");
+        example.textContent = suggestion.example;
+        example.style.marginTop = "16px";
+        example.style.padding = "18px 20px";
+        example.style.borderRadius = "18px";
+        example.style.background = "rgba(249,248,243,0.95)";
+        example.style.border = "1px solid rgba(44,44,43,0.06)";
+        example.style.fontSize = "28px";
+        example.style.lineHeight = "1.7";
+        example.style.fontStyle = "italic";
+        example.style.color = "rgba(44,44,43,.78)";
+
+        card.appendChild(title);
+        card.appendChild(text);
+        card.appendChild(example);
+        suggestionSection.appendChild(card);
+      });
+      paper.appendChild(suggestionSection);
+    }
+
+    appendDetailGroups(paper, diagnosisReport);
+    appendLiteraryVerdict(paper, diagnosisReport.literaryHistoryVerdict, "C");
+    appendFooter(paper);
+    return paper;
+  };
+
+  const buildMobileExportSnapshot = async (tab: "A" | "B" | "C", element: HTMLElement) => {
+    if (tab === "A") {
+      return await buildModeAMobileExportSnapshot() ?? await buildModeAExportSnapshot() ?? createExportSnapshot(element);
+    }
+    if (tab === "B") {
+      return await buildModeBExportSnapshot() ?? createExportSnapshot(element);
+    }
+    return await buildModeCExportSnapshot() ?? createExportSnapshot(element);
+  };
+
+  const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality?: number) => {
+    return new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((value) => resolve(value), type, quality);
+    });
+  };
+
+  const scaleCanvas = (source: HTMLCanvasElement, scale: number) => {
+    const resized = document.createElement("canvas");
+    resized.width = Math.max(1, Math.round(source.width * scale));
+    resized.height = Math.max(1, Math.round(source.height * scale));
+    const context = resized.getContext("2d");
+    if (context) {
+      context.fillStyle = "#FDFCF8";
+      context.fillRect(0, 0, resized.width, resized.height);
+      context.drawImage(source, 0, 0, resized.width, resized.height);
+    }
+    return resized;
+  };
+
+  const compressCanvasForSocial = async (canvas: HTMLCanvasElement) => {
+    const qualitySteps = [0.9, 0.84, 0.78, 0.72, 0.66];
+    const scaleSteps = [1, 0.92, 0.86, 0.8];
+    let bestBlob: Blob | null = null;
+
+    for (const scale of scaleSteps) {
+      const workingCanvas = scale === 1 ? canvas : scaleCanvas(canvas, scale);
+      for (const quality of qualitySteps) {
+        const blob = await canvasToBlob(workingCanvas, "image/jpeg", quality);
+        if (!blob) {
+          continue;
+        }
+        bestBlob = blob;
+        if (blob.size <= MAX_EXPORT_BYTES) {
+          return blob;
+        }
+      }
+    }
+
+    return bestBlob;
+  };
+
   const handleExportReportAsImageSafe = async (tab: "A" | "B" | "C") => {
     const refMap = { A: tabAReportRef, B: tabBReportRef, C: tabCReportRef };
     const setSavingMap = { A: setExportingA, B: setExportingB, C: setExportingC };
@@ -871,14 +1491,12 @@ export default function App() {
       exportHost.style.background = "#FDFCF8";
       exportHost.style.padding = "0";
 
-      const exportSnapshot = tab === "A"
-        ? await buildModeAExportSnapshot() ?? createExportSnapshot(element)
-        : createExportSnapshot(element);
+      const exportSnapshot = await buildMobileExportSnapshot(tab, element);
       exportHost.appendChild(exportSnapshot);
       document.body.appendChild(exportHost);
 
       const canvas = await html2canvas(exportSnapshot, {
-        scale: Math.max(window.devicePixelRatio || 1, 2),
+        scale: 1.6,
         useCORS: true,
         backgroundColor: "#FDFCF8",
         logging: false,
@@ -888,10 +1506,8 @@ export default function App() {
       document.body.removeChild(exportHost);
       exportHost = null;
 
-      const exportFilename = `文字审美分析_${titleMap[tab]}_${Date.now()}.png`;
-      const exportBlob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((value) => resolve(value), "image/png", 1);
-      });
+      const exportFilename = `文字审美分析_${titleMap[tab]}_${Date.now()}.jpg`;
+      const exportBlob = await compressCanvasForSocial(canvas);
 
       if (!exportBlob) {
         throw new Error("Canvas export returned empty blob.");
@@ -1372,7 +1988,7 @@ export default function App() {
       {/* Decorative Traditional Paper Header */}
       <header className="max-w-7xl mx-auto px-6 pt-12 md:pt-16 pb-6 text-center overflow-visible">
         <div className="flex justify-between items-baseline mb-12 border-b border-[#2C2C2B]/10 pb-4">
-          <div className="text-[10px] tracking-[0.2em] uppercase font-bold text-[#2C2C2B]/85 font-mono">Volume 04 // Sensory Anthology</div>
+          <div className="text-[10px] tracking-[0.2em] font-bold text-[#2C2C2B]/85 font-sans">文字风味轮</div>
           <nav className="flex gap-8 text-[10px] tracking-[0.1em] uppercase font-bold text-[#2C2C2B]/70 font-sans">
             <button onClick={() => setArchiveOpen(true)} className="hover:text-[#8C927F] transition-colors cursor-pointer">Archives 档案馆</button>
             <span>Index</span>
@@ -2161,14 +2777,18 @@ export default function App() {
                       exit={{ opacity: 0, y: -15 }}
                     >
                       <div ref={tabCReportRef} className="p-4 bg-[#FDFCF8] rounded-2xl border border-[#2C2C2B]/5 relative space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <div className="space-y-6">
                           {/* Left: Axis Projections */}
-                          <div className="md:col-span-12 lg:col-span-6 bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between">
+                          <div className="bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between">
                             <div>
                               <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">自审美学轴系</h3>
                               <p className="font-mono text-[8px] text-center text-[#2C2C2B]/40 uppercase tracking-widest mb-4">Diagnosis Axis</p>
                             </div>
-                            <RadarChart data={mapScoresToRadar(diagnosisReport.scores)} colorA="#2C2C2B" />
+                            <div className="flex justify-center">
+                              <div className="w-full max-w-[420px]">
+                                <RadarChart data={mapScoresToRadar(diagnosisReport.scores)} colorA="#2C2C2B" />
+                              </div>
+                            </div>
                             <div className="text-center mt-3">
                               <span className="text-[10px] font-serif text-[#2C2C2B]/80 bg-[#E3D5CA]/40 px-2 py-0.5 rounded-sm border border-[#E3D5CA]/60">
                                 表演性质: {diagnosisReport.scores.honesty.value}% (越低越诚实)
@@ -2177,7 +2797,7 @@ export default function App() {
                           </div>
 
                           {/* Right: Concrete Suggestions */}
-                          <div className="md:col-span-12 lg:col-span-6 space-y-6">
+                          <div className="space-y-6">
                             
                             {/* Lingering feedback */}
                             <div className={`p-5 rounded-2xl ${getFlavorBgClass(diagnosisReport.lingeringType)} relative`}>
@@ -2202,6 +2822,27 @@ export default function App() {
                               <p className="font-serif text-xs font-light text-[#2C2C2B]/85 leading-relaxed">
                                 {diagnosisReport.summary}
                               </p>
+                              <div className="export-ignore flex flex-wrap items-center gap-2 pt-4">
+                                <button
+                                  onClick={() => handleExportReportAsImageSafe("C")}
+                                  disabled={exportingC}
+                                  className="h-9 px-3 bg-white/78 hover:bg-white text-[#2C2C2B] rounded-xl border border-[#2C2C2B]/10 text-[10px] font-serif transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                                >
+                                  {exportingC ? (
+                                    <RefreshCw className="w-3 h-3 text-[#8C927F] animate-spin" />
+                                  ) : (
+                                    <Download className="w-3 h-3 text-[#8C927F]" />
+                                  )}
+                                  <span>{exportingC ? "\u5bfc\u51fa\u4e2d..." : "\u5bfc\u51fa\u4e3a\u957f\u56fe"}</span>
+                                </button>
+                                <button
+                                  onClick={() => saveBookmark("C")}
+                                  className="h-9 px-3 bg-white/58 hover:bg-white/75 text-[#2C2C2B] rounded-xl border border-[#2C2C2B]/10 text-[10px] font-serif transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Bookmark className="w-3 h-3 text-[#8C927F]" />
+                                  <span>{"\u6536\u5f55\u8bca\u65ad\u672c"}</span>
+                                </button>
+                              </div>
                             </div>
 
                             {/* suggestions suggestions */}
