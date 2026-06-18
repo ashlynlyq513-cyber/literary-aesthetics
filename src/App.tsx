@@ -2194,20 +2194,29 @@ export default function App() {
                             
                             {/* Lingering feedback */}
                             <div className={`p-5 rounded-2xl ${getFlavorBgClass(diagnosisReport.lingeringType)} relative`}>
-                              <div className="flex justify-between items-center mb-2">
+                              <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
                                 <h4 className="font-mono text-[9px] text-[#2C2C2B]/50 uppercase tracking-wider">余韵检测 & 质地结论</h4>
-                                <button
-                                  onClick={() => handleExportReportAsImageSafe("C")}
-                                  disabled={exportingC}
-                                  className="export-ignore px-2 py-0.5 bg-white/75 hover:bg-white text-[#2C2C2B]/85 hover:text-[#2C2C2B] rounded shadow-xs border border-dashed border-[#2C2C2B]/20 text-[9px] font-serif transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                >
-                                  {exportingC ? (
-                                    <RefreshCw className="w-2.5 h-2.5 text-[#8C927F] animate-spin" />
-                                  ) : (
-                                    <Download className="w-2.5 h-2.5 text-[#8C927F]" />
-                                  )}
-                                  <span>{exportingC ? "导出中..." : "导出为长图"}</span>
-                                </button>
+                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleExportReportAsImageSafe("C")}
+                                    disabled={exportingC}
+                                    className="export-ignore px-2 py-0.5 bg-white/75 hover:bg-white text-[#2C2C2B]/85 hover:text-[#2C2C2B] rounded shadow-xs border border-dashed border-[#2C2C2B]/20 text-[9px] font-serif transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  >
+                                    {exportingC ? (
+                                      <RefreshCw className="w-2.5 h-2.5 text-[#8C927F] animate-spin" />
+                                    ) : (
+                                      <Download className="w-2.5 h-2.5 text-[#8C927F]" />
+                                    )}
+                                    <span>{exportingC ? "导出中..." : "导出为长图"}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => saveBookmark("C")}
+                                    className="px-2 py-0.5 bg-white/75 hover:bg-white text-[#2C2C2B]/85 hover:text-[#2C2C2B] rounded shadow-xs border border-[#8C927F]/30 text-[9px] font-serif transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Bookmark className="w-2.5 h-2.5 text-[#8C927F]" />
+                                    <span>收录会诊稿</span>
+                                  </button>
+                                </div>
                               </div>
                               <span className={`px-2.5 py-0.5 rounded-full border text-[9px] tracking-widest font-serif font-light mb-3 inline-block ${getFlavorAccentColor(diagnosisReport.lingeringType)}`}>
                                 余韵: {diagnosisReport.lingeringType}
