@@ -11,6 +11,7 @@ type RadarItem = { label: string; value: number; valueB?: number };
 const W = 720;
 const PAD = 44;
 const MAX_BYTES = 1024 * 1024;
+const EXPORT_SCALES = [1.5, 1.25, 1];
 const INK = "#2C2C2B";
 const PAPER = "#F7F3EA";
 const LINE = "rgba(44,44,43,0.12)";
@@ -197,10 +198,10 @@ const drawTop = (p: Painter, mode: Mode) => {
 };
 
 const drawTextCard = (p: Painter, title: string, sub: string, body: string) => {
-  const h = 92 + p.measure(body, p.cw - 56, 25, 43);
+  const h = 94 + p.measure(body, p.cw - 56, 26, 46);
   const card = p.card(h);
   p.header(title, sub, card.x + 28, card.y + 24, card.w - 56);
-  p.wrap(body, card.x + 28, card.y + 88, card.w - 56, 25, 43);
+  p.wrap(body, card.x + 28, card.y + 88, card.w - 56, 26, 46);
   p.y += h + 20;
 };
 
@@ -248,12 +249,12 @@ const drawTags = (p: Painter, tags: string[], x: number, y: number, maxW: number
 const drawSummaryCard = (p: Painter, title: string, sub: string, body: string, tags: string[] = []) => {
   const innerW = p.cw - 56;
   const tagsH = measureTags(p, tags, innerW);
-  const h = 96 + tagsH + p.measure(body, innerW, 25, 43);
+  const h = 98 + tagsH + p.measure(body, innerW, 26, 46);
   const card = p.card(h);
   p.header(title, sub, card.x + 28, card.y + 24, innerW);
   let y = card.y + 88;
   y += drawTags(p, tags, card.x + 28, y, innerW);
-  p.wrap(body, card.x + 28, y, innerW, 25, 43);
+  p.wrap(body, card.x + 28, y, innerW, 26, 46);
   p.y += h + 20;
 };
 
@@ -362,19 +363,25 @@ const drawNotes = (p: Painter, report: AestheticsReport) => {
     text: report.details[detailKey] || report.scores[scoreKey].desc,
   }));
   const innerW = p.cw - 56;
-  const h = 92 + items.reduce((sum, item) => sum + 48 + p.measure(item.text, innerW, 21, 36), 0);
+  const h = 104 + items.reduce((sum, item) => sum + 58 + p.measure(item.text, innerW - 12, 24, 44), 0);
   const card = p.card(h);
   p.header("维度细读", "DIMENSION NOTES", card.x + 28, card.y + 24, innerW);
-  let y = card.y + 86;
+  let y = card.y + 94;
   items.forEach((item) => {
-    p.text(item.label, card.x + 28, y, { size: 19, weight: 600 });
-    p.font(18, 600);
+    p.ctx.save();
+    p.ctx.fillStyle = "rgba(139,115,85,0.82)";
+    p.ctx.beginPath();
+    p.ctx.arc(card.x + 35, y + 11, 4, 0, Math.PI * 2);
+    p.ctx.fill();
+    p.ctx.restore();
+    p.text(item.label, card.x + 50, y, { size: 22, weight: 700 });
+    p.font(22, 700);
     const labelWidth = p.ctx.measureText(item.label).width;
-    p.text(desc(item.label, item.score), card.x + 42 + labelWidth, y + 2, { size: 15, weight: 500, color: MUTED, family: NUMERIC_FONT });
+    p.text(desc(item.label, item.score), card.x + 62 + labelWidth, y + 4, { size: 16, weight: 500, color: MUTED, family: NUMERIC_FONT });
     p.text(item.group, card.x + card.w - 28, y + 3, { size: 12, color: "rgba(44,44,43,0.34)", align: "right", family: NUMERIC_FONT });
-    y += 30;
-    y += p.wrap(item.text, card.x + 28, y, innerW, 21, 36, "rgba(44,44,43,0.74)") + 18;
-    p.line(card.x + 28, y - 8, card.x + card.w - 28, y - 8);
+    y += 42;
+    y += p.wrap(item.text, card.x + 50, y, innerW - 22, 24, 44, "rgba(44,44,43,0.7)") + 24;
+    p.line(card.x + 28, y - 10, card.x + card.w - 28, y - 10);
   });
   p.y += h + 20;
 };
@@ -391,14 +398,20 @@ const drawHistory = (p: Painter, report: AestheticsReport) => {
 
 const drawList = (p: Painter, title: string, sub: string, items: string[][]) => {
   const innerW = p.cw - 56;
-  const h = 104 + items.reduce((sum, [, text]) => sum + 52 + p.measure(text, innerW, 21, 37), 0);
+  const h = 112 + items.reduce((sum, [, text]) => sum + 60 + p.measure(text, innerW - 22, 24, 44), 0);
   const card = p.card(h);
   p.header(title, sub, card.x + 28, card.y + 24, innerW);
-  let y = card.y + 86;
+  let y = card.y + 94;
   items.forEach(([itemTitle, text]) => {
-    p.text(itemTitle, card.x + 28, y, { size: 19, weight: 600, color: MUTED });
-    y += 32;
-    y += p.wrap(text, card.x + 28, y, innerW, 21, 37, "rgba(44,44,43,0.76)") + 20;
+    p.ctx.save();
+    p.ctx.fillStyle = "rgba(139,115,85,0.82)";
+    p.ctx.beginPath();
+    p.ctx.arc(card.x + 35, y + 11, 4, 0, Math.PI * 2);
+    p.ctx.fill();
+    p.ctx.restore();
+    p.text(itemTitle, card.x + 50, y, { size: 22, weight: 700, color: INK });
+    y += 42;
+    y += p.wrap(text, card.x + 50, y, innerW - 22, 24, 44, "rgba(44,44,43,0.7)") + 24;
   });
   p.y += h + 20;
 };
@@ -436,12 +449,13 @@ const drawB = (p: Painter, report: ComparisonReport) => {
   }
 };
 
-const baseCanvas = (h: number) => {
+const baseCanvas = (h: number, scale = 1) => {
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = h;
+  canvas.width = Math.ceil(W * scale);
+  canvas.height = Math.ceil(h * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas is not available.");
+  ctx.scale(scale, scale);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, W, h);
   ctx.fillStyle = "rgba(255,255,255,0.52)";
@@ -465,17 +479,25 @@ export const exportPosterImage = async (input: PosterInput) => {
   if ("fonts" in document) {
     await (document as Document & { fonts: { ready: Promise<void> } }).fonts.ready;
   }
-  const measuring = baseCanvas(18000);
+  const measuring = baseCanvas(22000);
   const height = Math.ceil(draw(measuring.ctx, input));
-  const output = baseCanvas(height);
-  draw(output.ctx, input);
 
   let best: Blob | null = null;
-  for (const quality of [0.9, 0.82, 0.74, 0.66, 0.58, 0.5]) {
-    const blob = await new Promise<Blob | null>((resolve) => output.canvas.toBlob(resolve, "image/jpeg", quality));
-    if (!blob) continue;
-    best = blob;
-    if (blob.size <= MAX_BYTES) break;
+  for (const scale of EXPORT_SCALES) {
+    const output = baseCanvas(height, scale);
+    draw(output.ctx, input);
+    for (const quality of [0.92, 0.86, 0.8, 0.74, 0.68, 0.6, 0.52]) {
+      const blob = await new Promise<Blob | null>((resolve) => output.canvas.toBlob(resolve, "image/jpeg", quality));
+      if (!blob) continue;
+      if (!best || blob.size < best.size || (blob.size <= MAX_BYTES && best.size > MAX_BYTES)) {
+        best = blob;
+      }
+      if (blob.size <= MAX_BYTES) {
+        best = blob;
+        break;
+      }
+    }
+    if (best && best.size <= MAX_BYTES) break;
   }
   if (!best) throw new Error("Poster export returned empty blob.");
 
