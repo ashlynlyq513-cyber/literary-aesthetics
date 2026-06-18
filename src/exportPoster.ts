@@ -16,6 +16,7 @@ const PAPER = "#F7F3EA";
 const LINE = "rgba(44,44,43,0.12)";
 const MUTED = "rgba(44,44,43,0.58)";
 const SAGE = "#8C927F";
+const NUMERIC_FONT = "'Helvetica Neue', Arial, sans-serif";
 
 const titles = { A: "单卷品鉴", B: "同框对照", C: "创作诊断" } as const;
 const subtitles = { A: "MODE A · 单卷品鉴", B: "MODE B · 同框对照", C: "MODE C · 创作诊断" } as const;
@@ -112,14 +113,15 @@ class Painter {
 
   header(title: string, sub: string, x: number, y: number, w: number) {
     this.text(title, x, y, { size: 27, weight: 600 });
-    this.text(sub, x + w, y + 8, { size: 12, color: "rgba(44,44,43,0.42)", align: "right", family: "Arial, sans-serif" });
+    this.text(sub, x + w, y + 8, { size: 12, color: "rgba(44,44,43,0.42)", align: "right", family: NUMERIC_FONT });
     this.line(x, y + 48, x + w, y + 48);
   }
 
   measure(body: string, maxW: number, size = 25, lh = Math.round(size * 1.72)) {
     this.font(size);
     let lines = 0;
-    String(body || "").split(/\n+/).filter(Boolean).forEach((para) => {
+    const paragraphs = String(body || "").split(/\n+/).filter(Boolean);
+    paragraphs.forEach((para, index) => {
       let line = "";
       Array.from(para.trim()).forEach((ch) => {
         const test = line + ch;
@@ -131,6 +133,9 @@ class Painter {
         }
       });
       if (line) lines += 1;
+      if (index < paragraphs.length - 1) {
+        lines += 0.35;
+      }
     });
     return Math.max(lh, lines * lh);
   }
@@ -170,8 +175,8 @@ const compareRadar = (report: ComparisonReport): RadarItem[] =>
   scoreMap.map(([key, label]) => ({ label, value: report.textA.scores[key], valueB: report.textB.scores[key] }));
 
 const drawTop = (p: Painter, mode: Mode) => {
-  p.text(titles[mode], PAD, p.y + 2, { size: 17, weight: 700, family: "Arial, sans-serif" });
-  p.text(subtitles[mode], W - PAD, p.y + 4, { size: 13, color: "rgba(44,44,43,0.42)", align: "right", family: "Arial, sans-serif" });
+  p.text(titles[mode], PAD, p.y + 2, { size: 17, weight: 700, family: NUMERIC_FONT });
+  p.text(subtitles[mode], W - PAD, p.y + 4, { size: 13, color: "rgba(44,44,43,0.42)", align: "right", family: NUMERIC_FONT });
   p.y += 58;
   const cx = W / 2;
   p.ctx.save();
@@ -192,10 +197,63 @@ const drawTop = (p: Painter, mode: Mode) => {
 };
 
 const drawTextCard = (p: Painter, title: string, sub: string, body: string) => {
-  const h = 90 + p.measure(body, p.cw - 56, 27, 47);
+  const h = 92 + p.measure(body, p.cw - 56, 25, 43);
   const card = p.card(h);
   p.header(title, sub, card.x + 28, card.y + 24, card.w - 56);
-  p.wrap(body, card.x + 28, card.y + 86, card.w - 56, 27, 47);
+  p.wrap(body, card.x + 28, card.y + 88, card.w - 56, 25, 43);
+  p.y += h + 20;
+};
+
+const measureTags = (p: Painter, tags: string[], maxW: number) => {
+  if (!tags.length) return 0;
+  let x = 0;
+  let rows = 1;
+  p.font(16, 500, NUMERIC_FONT);
+  tags.forEach((tag) => {
+    const w = p.ctx.measureText(`#${tag}`).width + 28;
+    if (x > 0 && x + w > maxW) {
+      rows += 1;
+      x = 0;
+    }
+    x += w + 10;
+  });
+  return rows * 34 + 14;
+};
+
+const drawTags = (p: Painter, tags: string[], x: number, y: number, maxW: number) => {
+  if (!tags.length) return 0;
+  let cx = x;
+  let cy = y;
+  p.font(16, 500, NUMERIC_FONT);
+  tags.forEach((tag) => {
+    const text = `#${tag}`;
+    const w = p.ctx.measureText(text).width + 28;
+    if (cx > x && cx + w > x + maxW) {
+      cx = x;
+      cy += 34;
+    }
+    p.ctx.save();
+    p.ctx.fillStyle = "rgba(255,255,255,0.78)";
+    p.ctx.strokeStyle = "rgba(140,146,127,0.34)";
+    p.rounded(cx, cy, w, 26, 13);
+    p.ctx.fill();
+    p.ctx.stroke();
+    p.ctx.restore();
+    p.text(text, cx + 14, cy + 5, { size: 16, weight: 500, color: "rgba(44,44,43,0.68)", family: NUMERIC_FONT });
+    cx += w + 10;
+  });
+  return cy - y + 40;
+};
+
+const drawSummaryCard = (p: Painter, title: string, sub: string, body: string, tags: string[] = []) => {
+  const innerW = p.cw - 56;
+  const tagsH = measureTags(p, tags, innerW);
+  const h = 96 + tagsH + p.measure(body, innerW, 25, 43);
+  const card = p.card(h);
+  p.header(title, sub, card.x + 28, card.y + 24, innerW);
+  let y = card.y + 88;
+  y += drawTags(p, tags, card.x + 28, y, innerW);
+  p.wrap(body, card.x + 28, y, innerW, 25, 43);
   p.y += h + 20;
 };
 
@@ -251,7 +309,7 @@ const drawRadar = (p: Painter, data: RadarItem[], x: number, y: number, size: nu
     const ty = cy + Math.sin(a) * (r + 42);
     const align = Math.cos(a) > 0.2 ? "left" : Math.cos(a) < -0.2 ? "right" : "center";
     p.text(item.label, tx, ty - 10, { size: 15, weight: 600, align: align as CanvasTextAlign });
-    p.text(desc(item.label, item.value), tx, ty + 9, { size: 11, color: "rgba(44,44,43,0.38)", align: align as CanvasTextAlign, family: "Arial, sans-serif" });
+    p.text(desc(item.label, item.value), tx, ty + 9, { size: 11, color: "rgba(44,44,43,0.38)", align: align as CanvasTextAlign, family: NUMERIC_FONT });
   });
   ctx.restore();
 };
@@ -260,7 +318,7 @@ const drawBars = (p: Painter, data: RadarItem[], x: number, y: number, w: number
   let cy = y;
   data.forEach((item) => {
     p.text(item.label, x, cy - 2, { size: 17, weight: 600 });
-    p.text(desc(item.label, item.value), x, cy + 19, { size: 11, color: "rgba(44,44,43,0.38)", family: "Arial, sans-serif" });
+    p.text(desc(item.label, item.value), x, cy + 19, { size: 11, color: "rgba(44,44,43,0.38)", family: NUMERIC_FONT });
     const bx = x + 94;
     const bw = w - 142;
     p.ctx.save();
@@ -276,17 +334,23 @@ const drawBars = (p: Painter, data: RadarItem[], x: number, y: number, w: number
       p.ctx.fill();
     }
     p.ctx.restore();
-    p.text(item.valueB === undefined ? String(item.value) : `${item.value}/${item.valueB}`, x + w, cy + 1, { size: 14, color: MUTED, align: "right", family: "Arial, sans-serif" });
+    p.text(item.valueB === undefined ? String(item.value) : `${item.value}/${item.valueB}`, x + w, cy + 1, { size: 14, color: MUTED, align: "right", family: NUMERIC_FONT });
     cy += item.valueB === undefined ? 42 : 52;
   });
 };
 
 const drawAxis = (p: Painter, title: string, data: RadarItem[]) => {
-  const h = 772;
+  const hasCompare = data.some((item) => item.valueB !== undefined);
+  const radarSize = 420;
+  const radarTop = 96;
+  const barsTop = radarTop + radarSize + 58;
+  const rowHeight = hasCompare ? 52 : 42;
+  const barsHeight = data.length * rowHeight;
+  const h = barsTop + barsHeight + 46;
   const card = p.card(h);
   p.header(title, "AXIS OVERVIEW", card.x + 28, card.y + 24, card.w - 56);
-  drawRadar(p, data, card.x + 72, card.y + 92, card.w - 144);
-  drawBars(p, data, card.x + 34, card.y + 512, card.w - 68);
+  drawRadar(p, data, card.x + (card.w - radarSize) / 2, card.y + radarTop, radarSize);
+  drawBars(p, data, card.x + 34, card.y + barsTop, card.w - 68);
   p.y += h + 20;
 };
 
@@ -303,8 +367,11 @@ const drawNotes = (p: Painter, report: AestheticsReport) => {
   p.header("维度细读", "DIMENSION NOTES", card.x + 28, card.y + 24, innerW);
   let y = card.y + 86;
   items.forEach((item) => {
-    p.text(`${item.label} ${item.score}`, card.x + 28, y, { size: 18, weight: 600 });
-    p.text(item.group, card.x + card.w - 28, y + 3, { size: 12, color: "rgba(44,44,43,0.34)", align: "right", family: "Arial, sans-serif" });
+    p.text(item.label, card.x + 28, y, { size: 19, weight: 600 });
+    p.font(18, 600);
+    const labelWidth = p.ctx.measureText(item.label).width;
+    p.text(desc(item.label, item.score), card.x + 42 + labelWidth, y + 2, { size: 15, weight: 500, color: MUTED, family: NUMERIC_FONT });
+    p.text(item.group, card.x + card.w - 28, y + 3, { size: 12, color: "rgba(44,44,43,0.34)", align: "right", family: NUMERIC_FONT });
     y += 30;
     y += p.wrap(item.text, card.x + 28, y, innerW, 21, 36, "rgba(44,44,43,0.74)") + 18;
     p.line(card.x + 28, y - 8, card.x + card.w - 28, y - 8);
@@ -324,37 +391,37 @@ const drawHistory = (p: Painter, report: AestheticsReport) => {
 
 const drawList = (p: Painter, title: string, sub: string, items: string[][]) => {
   const innerW = p.cw - 56;
-  const h = 92 + items.reduce((sum, [, text]) => sum + 48 + p.measure(text, innerW, 22, 38), 0);
+  const h = 104 + items.reduce((sum, [, text]) => sum + 52 + p.measure(text, innerW, 21, 37), 0);
   const card = p.card(h);
   p.header(title, sub, card.x + 28, card.y + 24, innerW);
   let y = card.y + 86;
   items.forEach(([itemTitle, text]) => {
-    p.text(itemTitle, card.x + 28, y, { size: 18, weight: 600, color: MUTED });
-    y += 30;
-    y += p.wrap(text, card.x + 28, y, innerW, 22, 38, "rgba(44,44,43,0.76)") + 18;
+    p.text(itemTitle, card.x + 28, y, { size: 19, weight: 600, color: MUTED });
+    y += 32;
+    y += p.wrap(text, card.x + 28, y, innerW, 21, 37, "rgba(44,44,43,0.76)") + 20;
   });
   p.y += h + 20;
 };
 
 const drawA = (p: Painter, report: AestheticsReport) => {
-  drawTextCard(p, "总体结论", report.lingeringType, report.summary);
+  drawSummaryCard(p, "总体结论", report.lingeringType, report.summary, report.tags);
   drawAxis(p, "九维坐标", reportRadar(report));
   drawNotes(p, report);
   drawHistory(p, report);
 };
 
 const drawC = (p: Painter, report: AestheticsReport) => {
-  drawTextCard(p, "核心诊断", "DIAGNOSIS", report.summary);
+  drawSummaryCard(p, "核心诊断", "DIAGNOSIS", report.summary);
   drawAxis(p, "诊断坐标", reportRadar(report));
   if (report.suggestions?.length) {
-    drawList(p, "改写建议", "REWRITE PROMPTS", report.suggestions.map((item, index) => [`方案 ${index + 1} · ${item.title}`, `${item.text}\n\n${item.example}`]));
+    drawList(p, "改写建议", "REWRITE PROMPTS", report.suggestions.map((item, index) => [`方案 ${index + 1} · ${item.title}`, `${item.text}\n\n示例：${item.example}`]));
   }
   drawNotes(p, report);
   drawHistory(p, report);
 };
 
 const drawB = (p: Painter, report: ComparisonReport) => {
-  drawTextCard(p, "总判断", "FINAL VERDICT", report.finalVerdict);
+  drawSummaryCard(p, "总判断", "FINAL VERDICT", report.finalVerdict);
   drawTextCard(p, "文本摘要", "A / B", `文本A：${report.textA.summary}\n\n文本B：${report.textB.summary}`);
   drawAxis(p, "差异投影", compareRadar(report));
   if (report.comparison?.length) {
