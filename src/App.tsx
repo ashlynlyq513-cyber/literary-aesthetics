@@ -21,6 +21,7 @@ import {
 import html2canvas from "html2canvas";
 import RadarChart from "./components/RadarChart";
 import { PRESET_SAMPLES, PRES_COMPARE_SAMPLES, STYLE_VIBES } from "./data";
+import { exportPosterImage } from "./exportPoster";
 import {
   ChatMessage,
   AestheticsReport,
@@ -854,17 +855,17 @@ export default function App() {
   };
 
   const handleExportReportAsImageSafe = async (tab: "A" | "B" | "C") => {
-    const refMap = { A: tabAReportRef, B: tabBReportRef, C: tabCReportRef };
     const setSavingMap = { A: setExportingA, B: setExportingB, C: setExportingC };
-    const titleMap = {
-      A: "单卷品鉴",
-      B: "同框对照",
-      C: "创作诊断",
-    } as const;
-    const element = refMap[tab].current;
-    let exportHost: HTMLDivElement | null = null;
+    const payload =
+      tab === "A" && analysisReport
+        ? { mode: "A" as const, report: analysisReport }
+        : tab === "B" && compareReport
+          ? { mode: "B" as const, report: compareReport }
+          : tab === "C" && diagnosisReport
+            ? { mode: "C" as const, report: diagnosisReport }
+            : null;
 
-    if (!element) {
+    if (!payload) {
       setErrorMsg("当前没有可导出的报告内容。");
       return;
     }
@@ -873,64 +874,11 @@ export default function App() {
     setErrorMsg(null);
 
     try {
-      if ("fonts" in document) {
-        await (document as Document & { fonts: { ready: Promise<void> } }).fonts.ready;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      exportHost = document.createElement("div");
-      exportHost.style.position = "fixed";
-      exportHost.style.left = "-100000px";
-      exportHost.style.top = "0";
-      exportHost.style.pointerEvents = "none";
-      exportHost.style.zIndex = "-1";
-      exportHost.style.background = "#FDFCF8";
-      exportHost.style.padding = "0";
-
-      const exportSnapshot = tab === "A"
-        ? await buildModeAExportSnapshot() ?? createExportSnapshot(element)
-        : createExportSnapshot(element);
-      exportHost.appendChild(exportSnapshot);
-      document.body.appendChild(exportHost);
-
-      const canvas = await html2canvas(exportSnapshot, {
-        scale: Math.max(window.devicePixelRatio || 1, 2),
-        useCORS: true,
-        backgroundColor: "#FDFCF8",
-        logging: false,
-        imageTimeout: 0,
-      });
-
-      document.body.removeChild(exportHost);
-      exportHost = null;
-
-      const exportFilename = `文字审美分析_${titleMap[tab]}_${Date.now()}.png`;
-      const exportBlob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((value) => resolve(value), "image/png", 1);
-      });
-
-      if (!exportBlob) {
-        throw new Error("Canvas export returned empty blob.");
-      }
-
-      const exportUrl = URL.createObjectURL(exportBlob);
-      const exportLink = document.createElement("a");
-      exportLink.href = exportUrl;
-      exportLink.download = exportFilename;
-      exportLink.rel = "noopener";
-      exportLink.style.display = "none";
-      document.body.appendChild(exportLink);
-      exportLink.click();
-      document.body.removeChild(exportLink);
-      window.setTimeout(() => URL.revokeObjectURL(exportUrl), 1000);
+      await exportPosterImage(payload);
     } catch (e) {
       setErrorMsg("保存长图失败，请稍后重试。");
       console.error("生成长图出错:", e);
     } finally {
-      if (exportHost?.parentNode) {
-        exportHost.parentNode.removeChild(exportHost);
-      }
       setSavingMap[tab](false);
     }
   };
