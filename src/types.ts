@@ -1,5 +1,6 @@
 export interface DimensionScore {
   value: number;
+  term?: string;
   desc: string;
 }
 

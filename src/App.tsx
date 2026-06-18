@@ -22,6 +22,7 @@ import html2canvas from "html2canvas";
 import RadarChart from "./components/RadarChart";
 import { PRESET_SAMPLES, PRES_COMPARE_SAMPLES, STYLE_VIBES } from "./data";
 import { exportPosterImage } from "./exportPoster";
+import { getAxisSubtitle, getDescriptorByKey, getDescriptorByLabel } from "../lib/aesthetic-spectrum";
 import {
   ChatMessage,
   AestheticsReport,
@@ -90,7 +91,8 @@ const DETAIL_GROUPS: {
 ];
 
 const buildDetailFallback = (label: string, score: DimensionScore, fallback: string) => {
-  return `${label}当前位于 ${score.value} 分区间。${score.desc}${fallback}`;
+  const term = score.term ? `（${score.term}）` : "";
+  return `${label}当前位于 ${score.value} 分区间${term}。${score.desc}${fallback}`;
 };
 
 const normalizeLingeringType = (value: unknown, lingeringScore?: number): LingeringType => {
@@ -108,6 +110,7 @@ const normalizeLingeringType = (value: unknown, lingeringScore?: number): Linger
 
 const normalizeAestheticsReport = (report: any): AestheticsReport => {
   if (!report || typeof report !== "object") return report;
+  normalizeScoreTerms(report.scores);
   return {
     ...report,
     lingeringType: normalizeLingeringType(report.lingeringType, report.scores?.lingering?.value),
@@ -131,6 +134,16 @@ const normalizeComparisonReport = (report: any): ComparisonReport => {
         }
       : report.textB,
   };
+};
+
+const normalizeScoreTerms = (scores: any) => {
+  if (!scores || typeof scores !== "object") return;
+  (Object.keys(scores) as (keyof AestheticsReport["scores"])[]).forEach((key) => {
+    const score = scores[key];
+    if (!score || typeof score !== "object") return;
+    if (typeof score.term === "string" && score.term.trim()) return;
+    score.term = getDescriptorByKey(key, typeof score.value === "number" ? score.value : 50);
+  });
 };
 
 const getDimensionDetailGroups = (report: AestheticsReport) => {
@@ -161,18 +174,7 @@ const getFlavorBadgeColor = (type: string) => {
   }
 };
 
-const getRadarDescriptor = (label: string, value: number) => {
-  if (label === "娓╁害") return value >= 67 ? "鏆栬皟" : value >= 34 ? "娓╁拰" : "鍐疯皟";
-  if (label === "瀵嗗害") return value >= 67 ? "绻佸瘑" : value >= 34 ? "鍖€瀹?" : "鐤忔湕";
-  if (label === "閫忔槑搴?") return value >= 67 ? "骞芥繁" : value >= 34 ? "娓呴€?" : "鐩寸櫧";
-  if (label === "浣欓煹") return value >= 67 ? "娌夋綔" : value >= 34 ? "鍥炵敇" : "鍗虫暎";
-  if (label === "寮犲姏") return value >= 67 ? "绱х环" : value >= 34 ? "鍚紶鍔?" : "鏉惧紱";
-  if (label === "鎰忚薄鍩?") return value >= 67 ? "鎶借薄" : value >= 34 ? "鍏煎叿" : "鍏疯薄";
-  if (label === "鏃堕棿鎰?") return value >= 67 ? "寤剁坏" : value >= 34 ? "鑸掑睍" : "鍑濈缉";
-  if (label === "璇氬疄搴?") return value >= 67 ? "琛ㄦ紨鎰?" : value >= 34 ? "鍏嬪埗" : "鍧﹂湶";
-  if (label === "鏂囧寲灞?") return value >= 67 ? "鏂板彉" : value >= 34 ? "鍏煎" : "浼犵粺";
-  return "";
-};
+const getRadarDescriptor = (label: string, value: number) => getDescriptorByLabel(label, value);
 
 export default function App() {
   const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
@@ -1280,44 +1282,32 @@ export default function App() {
     }
   };
 
-  const getScoreDescriptor = (dimension: keyof AestheticsReport["scores"], value: number) => {
-    if (dimension === "temperature") return value >= 67 ? "暖调" : value >= 34 ? "温和" : "冷调";
-    if (dimension === "density") return value >= 67 ? "繁密" : value >= 34 ? "匀实" : "疏朗";
-    if (dimension === "transparency") return value >= 67 ? "幽深" : value >= 34 ? "清透" : "直白";
-    if (dimension === "lingering") return value >= 67 ? "沉潜" : value >= 34 ? "回甘" : "即散";
-    if (dimension === "tension") return value >= 67 ? "紧绷" : value >= 34 ? "含张力" : "松弛";
-    if (dimension === "imagery") return value >= 67 ? "抽象" : value >= 34 ? "兼具" : "具象";
-    if (dimension === "time") return value >= 67 ? "延绵" : value >= 34 ? "舒展" : "凝缩";
-    if (dimension === "honesty") return value >= 67 ? "表演感" : value >= 34 ? "克制" : "坦露";
-    return value >= 67 ? "新变" : value >= 34 ? "兼容" : "传统";
-  };
-
   // Format scores for Radar graph delivery
   const mapScoresToRadar = (scores: AestheticsReport["scores"]) => {
     return [
-      { label: "温度", subLabel: "冷冽 / 炽烈", value: scores.temperature.value },
-      { label: "密度", subLabel: "疏朗 / 密植", value: scores.density.value },
-      { label: "透明度", subLabel: "直白 / 幽深", value: scores.transparency.value },
-      { label: "余韵", subLabel: "即散 / 沉淀", value: scores.lingering.value },
-      { label: "张力", subLabel: "松弛 / 紧绷", value: scores.tension.value },
-      { label: "意象域", subLabel: "具象 / 抽象", value: scores.imagery.value },
-      { label: "时间感", subLabel: "压缩 / 延缓", value: scores.time.value },
-      { label: "诚实度", subLabel: "坦露 / 表演", value: scores.honesty.value },
-      { label: "文化层", subLabel: "传统 / 断裂", value: scores.culture.value }
+      { label: "温度", subLabel: getAxisSubtitle("temperature"), value: scores.temperature.value },
+      { label: "密度", subLabel: getAxisSubtitle("density"), value: scores.density.value },
+      { label: "透明度", subLabel: getAxisSubtitle("transparency"), value: scores.transparency.value },
+      { label: "余韵", subLabel: getAxisSubtitle("lingering"), value: scores.lingering.value },
+      { label: "张力", subLabel: getAxisSubtitle("tension"), value: scores.tension.value },
+      { label: "意象域", subLabel: getAxisSubtitle("imagery"), value: scores.imagery.value },
+      { label: "时间感", subLabel: getAxisSubtitle("time"), value: scores.time.value },
+      { label: "诚实度", subLabel: getAxisSubtitle("honesty"), value: scores.honesty.value },
+      { label: "文化层", subLabel: getAxisSubtitle("culture"), value: scores.culture.value }
     ];
   };
 
   const mapCompareToRadar = (comp: ComparisonReport) => {
     const keys: { k: keyof typeof comp.textA.scores; l: string; sl: string }[] = [
-      { k: "temperature", l: "温度", sl: "冷冽/炽烈" },
-      { k: "density", l: "密度", sl: "疏朗/密植" },
-      { k: "transparency", l: "透明度", sl: "直白/幽深" },
-      { k: "lingering", l: "余韵", sl: "即散/沉淀" },
-      { k: "tension", l: "张力", sl: "松弛/紧绷" },
-      { k: "imagery", l: "意象域", sl: "具象/抽象" },
-      { k: "time", l: "时间感", sl: "压缩/延缓" },
-      { k: "honesty", l: "诚实度", sl: "坦露/表演" },
-      { k: "culture", l: "文化层", sl: "传统/断裂" }
+      { k: "temperature", l: "温度", sl: getAxisSubtitle("temperature") },
+      { k: "density", l: "密度", sl: getAxisSubtitle("density") },
+      { k: "transparency", l: "透明度", sl: getAxisSubtitle("transparency") },
+      { k: "lingering", l: "余韵", sl: getAxisSubtitle("lingering") },
+      { k: "tension", l: "张力", sl: getAxisSubtitle("tension") },
+      { k: "imagery", l: "意象域", sl: getAxisSubtitle("imagery") },
+      { k: "time", l: "时间感", sl: getAxisSubtitle("time") },
+      { k: "honesty", l: "诚实度", sl: getAxisSubtitle("honesty") },
+      { k: "culture", l: "文化层", sl: getAxisSubtitle("culture") }
     ];
 
     return keys.map((item) => ({
@@ -1330,15 +1320,15 @@ export default function App() {
 
   const getInteractiveRadarData = () => {
     return [
-      { label: "温度", subLabel: "冷冽 / 炽烈", value: interactiveScores.temperature },
-      { label: "密度", subLabel: "疏朗 / 密植", value: interactiveScores.density },
-      { label: "透明度", subLabel: "直白 / 幽深", value: interactiveScores.transparency },
-      { label: "余韵", subLabel: "即散 / 沉淀", value: interactiveScores.lingering },
-      { label: "张力", subLabel: "松弛 / 紧绷", value: interactiveScores.tension },
-      { label: "意象域", subLabel: "具象 / 抽象", value: interactiveScores.imagery },
-      { label: "时间感", subLabel: "压缩 / 延缓", value: interactiveScores.time },
-      { label: "诚实度", subLabel: "坦露 / 表演", value: interactiveScores.honesty },
-      { label: "文化层", subLabel: "传统 / 断裂", value: interactiveScores.culture }
+      { label: "温度", subLabel: getAxisSubtitle("temperature"), value: interactiveScores.temperature },
+      { label: "密度", subLabel: getAxisSubtitle("density"), value: interactiveScores.density },
+      { label: "透明度", subLabel: getAxisSubtitle("transparency"), value: interactiveScores.transparency },
+      { label: "余韵", subLabel: getAxisSubtitle("lingering"), value: interactiveScores.lingering },
+      { label: "张力", subLabel: getAxisSubtitle("tension"), value: interactiveScores.tension },
+      { label: "意象域", subLabel: getAxisSubtitle("imagery"), value: interactiveScores.imagery },
+      { label: "时间感", subLabel: getAxisSubtitle("time"), value: interactiveScores.time },
+      { label: "诚实度", subLabel: getAxisSubtitle("honesty"), value: interactiveScores.honesty },
+      { label: "文化层", subLabel: getAxisSubtitle("culture"), value: interactiveScores.culture }
     ];
   };
 

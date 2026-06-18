@@ -1,3 +1,5 @@
+import { buildSpectrumPromptGuide, getClosestAnchorByKey } from "./aesthetic-spectrum.js";
+
 function getModelConfig() {
   return {
     apiBase: process.env.MODEL_API_BASE || "https://ckff.dev/v1",
@@ -191,6 +193,7 @@ function scoreSchema() {
     type: JSON_SCHEMA_TYPES.OBJECT,
     properties: {
       value: { type: JSON_SCHEMA_TYPES.INTEGER },
+      term: { type: JSON_SCHEMA_TYPES.STRING },
       desc: { type: JSON_SCHEMA_TYPES.STRING },
     },
     required: ["value", "desc"],
@@ -241,6 +244,39 @@ function compareSideSchema() {
   };
 }
 
+function withSpectrumInstruction(systemInstruction: string) {
+  return `${systemInstruction}
+
+请以「文字审美模型｜AI 操作手册」中的光谱词条作为唯一评分锚点。
+每个 scores 维度都必须返回 value、term、desc：
+- value 是 0 到 100 的整数分。
+- term 必须填写下列光谱表中与 value 及文本证据最接近的词条。
+- desc 必须说明为什么文本证据对应这个分数与词条。
+
+${buildSpectrumPromptGuide()}`;
+}
+
+function normalizeScoreTerms(scores: any) {
+  if (!scores || typeof scores !== "object") return;
+  ([
+    "temperature",
+    "density",
+    "transparency",
+    "lingering",
+    "tension",
+    "imagery",
+    "time",
+    "honesty",
+    "culture",
+  ] as const).forEach((key) => {
+    const score = scores[key];
+    if (!score || typeof score !== "object") return;
+    if (typeof score.term === "string" && score.term.trim()) return;
+    const value = typeof score.value === "number" ? score.value : 50;
+    score.term = getClosestAnchorByKey(key, value)?.term ?? "";
+  });
+}
+
 function normalizeLingeringType(value: unknown, lingeringScore?: number): LingeringType {
   if (typeof value === "string") {
     const matched = LINGERING_TYPES.find((type) => value.trim() === type || value.includes(type));
@@ -260,6 +296,7 @@ function normalizeAnalyzeReport(report: any) {
     report.lingeringType,
     report.scores?.lingering?.value,
   );
+  normalizeScoreTerms(report.scores);
   return report;
 }
 
@@ -371,7 +408,7 @@ export async function analyzeText(payload: any) {
 `.trim();
 
       const responseText = await callModel({
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: withSpectrumInstruction(SYSTEM_INSTRUCTION),
         userPrompt: `${prompt}\n\n请严格匹配以下 JSON Schema，并仅返回 JSON：\n${JSON.stringify(CUSTOM_PROFILE_RESPONSE_SCHEMA)}`,
         temperature: 0.65,
       });
@@ -394,7 +431,7 @@ ${textB || ""}
 `.trim();
 
       const responseText = await callModel({
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: withSpectrumInstruction(SYSTEM_INSTRUCTION),
         userPrompt: `${prompt}\n\n请严格匹配以下 JSON Schema，并仅返回 JSON：\n${JSON.stringify(COMPARE_RESPONSE_SCHEMA)}`,
         temperature: 0.3,
       });
@@ -418,7 +455,7 @@ ${modeInstruction}
 `.trim();
 
     const responseText = await callModel({
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: withSpectrumInstruction(SYSTEM_INSTRUCTION),
       userPrompt: `${prompt}\n\n请严格匹配以下 JSON Schema，并仅返回 JSON：\n${JSON.stringify(ANALYZE_RESPONSE_SCHEMA)}`,
       temperature: 0.4,
     });

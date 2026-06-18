@@ -1,4 +1,5 @@
 import { AestheticsReport, ComparisonReport } from "./types";
+import { getDescriptorByLabel } from "../lib/aesthetic-spectrum";
 
 type Mode = "A" | "B" | "C";
 type PosterInput =
@@ -46,17 +47,7 @@ const details = [
   ["culture", "cultureAnalysis", "元层级"],
 ] as const;
 
-const desc = (label: string, value: number) => {
-  if (label === "温度") return value >= 67 ? "暖调" : value >= 34 ? "温和" : "冷调";
-  if (label === "密度") return value >= 67 ? "繁密" : value >= 34 ? "匀实" : "疏朗";
-  if (label === "透明度") return value >= 67 ? "幽深" : value >= 34 ? "清透" : "直白";
-  if (label === "余韵") return value >= 67 ? "沉潜" : value >= 34 ? "回甘" : "即散";
-  if (label === "张力") return value >= 67 ? "紧绷" : value >= 34 ? "含张力" : "松弛";
-  if (label === "意象域") return value >= 67 ? "抽象" : value >= 34 ? "兼具" : "具象";
-  if (label === "时间感") return value >= 67 ? "延绵" : value >= 34 ? "舒展" : "凝缩";
-  if (label === "诚实度") return value >= 67 ? "表演感" : value >= 34 ? "克制" : "坦露";
-  return value >= 67 ? "新变" : value >= 34 ? "兼容" : "传统";
-};
+const desc = (label: string, value: number) => getDescriptorByLabel(label, value);
 
 class Painter {
   y = PAD;
