@@ -112,9 +112,16 @@ class Painter {
     this.ctx.restore();
   }
 
-  header(title: string, sub: string, x: number, y: number, w: number) {
+  header(title: string, sub: string, x: number, y: number, w: number, options: { bracketSub?: boolean } = {}) {
     this.text(title, x, y, { size: 27, weight: 600 });
-    this.text(sub, x + w, y + 8, { size: 12, color: "rgba(44,44,43,0.42)", align: "right", family: NUMERIC_FONT });
+    const subText = options.bracketSub ? `【${sub}】` : sub;
+    this.text(subText, x + w, options.bracketSub ? y : y + 8, {
+      size: options.bracketSub ? 27 : 12,
+      weight: options.bracketSub ? 600 : 400,
+      color: options.bracketSub ? INK : "rgba(44,44,43,0.42)",
+      align: "right",
+      family: options.bracketSub ? undefined : NUMERIC_FONT,
+    });
     this.line(x, y + 48, x + w, y + 48);
   }
 
@@ -176,7 +183,6 @@ const compareRadar = (report: ComparisonReport): RadarItem[] =>
   scoreMap.map(([key, label]) => ({ label, value: report.textA.scores[key], valueB: report.textB.scores[key] }));
 
 const drawTop = (p: Painter, mode: Mode) => {
-  p.text(titles[mode], PAD, p.y + 2, { size: 17, weight: 700, family: NUMERIC_FONT });
   p.text(subtitles[mode], W - PAD, p.y + 4, { size: 13, color: "rgba(44,44,43,0.42)", align: "right", family: NUMERIC_FONT });
   p.y += 58;
   const cx = W / 2;
@@ -246,14 +252,17 @@ const drawTags = (p: Painter, tags: string[], x: number, y: number, maxW: number
   return cy - y + 40;
 };
 
-const drawSummaryCard = (p: Painter, title: string, sub: string, body: string, tags: string[] = []) => {
+const drawSummaryCard = (p: Painter, title: string, sub: string, body: string, tags: string[] = [], options: { bracketSub?: boolean } = {}) => {
   const innerW = p.cw - 56;
   const tagsH = measureTags(p, tags, innerW);
-  const h = 98 + tagsH + p.measure(body, innerW, 26, 46);
+  const h = 110 + tagsH + p.measure(body, innerW, 26, 46);
   const card = p.card(h);
-  p.header(title, sub, card.x + 28, card.y + 24, innerW);
-  let y = card.y + 88;
+  p.header(title, sub, card.x + 28, card.y + 24, innerW, options);
+  let y = card.y + 96;
   y += drawTags(p, tags, card.x + 28, y, innerW);
+  if (tags.length) {
+    y += 10;
+  }
   p.wrap(body, card.x + 28, y, innerW, 26, 46);
   p.y += h + 20;
 };
@@ -310,7 +319,10 @@ const drawRadar = (p: Painter, data: RadarItem[], x: number, y: number, size: nu
     const ty = cy + Math.sin(a) * (r + 42);
     const align = Math.cos(a) > 0.2 ? "left" : Math.cos(a) < -0.2 ? "right" : "center";
     p.text(item.label, tx, ty - 10, { size: 15, weight: 600, align: align as CanvasTextAlign });
-    p.text(desc(item.label, item.value), tx, ty + 9, { size: 11, color: "rgba(44,44,43,0.38)", align: align as CanvasTextAlign, family: NUMERIC_FONT });
+    const labelDesc = item.valueB === undefined
+      ? desc(item.label, item.value)
+      : `${desc(item.label, item.value)}/${desc(item.label, item.valueB)}`;
+    p.text(labelDesc, tx, ty + 9, { size: 11, color: "rgba(44,44,43,0.38)", align: align as CanvasTextAlign, family: NUMERIC_FONT });
   });
   ctx.restore();
 };
@@ -319,7 +331,10 @@ const drawBars = (p: Painter, data: RadarItem[], x: number, y: number, w: number
   let cy = y;
   data.forEach((item) => {
     p.text(item.label, x, cy - 2, { size: 17, weight: 600 });
-    p.text(desc(item.label, item.value), x, cy + 19, { size: 11, color: "rgba(44,44,43,0.38)", family: NUMERIC_FONT });
+    const itemDesc = item.valueB === undefined
+      ? desc(item.label, item.value)
+      : `${desc(item.label, item.value)}/${desc(item.label, item.valueB)}`;
+    p.text(itemDesc, x, cy + 19, { size: 11, color: "rgba(44,44,43,0.38)", family: NUMERIC_FONT });
     const bx = x + 94;
     const bw = w - 142;
     p.ctx.save();
@@ -363,7 +378,7 @@ const drawNotes = (p: Painter, report: AestheticsReport) => {
     text: report.details[detailKey] || report.scores[scoreKey].desc,
   }));
   const innerW = p.cw - 56;
-  const h = 104 + items.reduce((sum, item) => sum + 58 + p.measure(item.text, innerW - 12, 24, 44), 0);
+  const h = 126 + items.reduce((sum, item) => sum + 72 + p.measure(item.text, innerW - 22, 24, 44), 0);
   const card = p.card(h);
   p.header("维度细读", "DIMENSION NOTES", card.x + 28, card.y + 24, innerW);
   let y = card.y + 94;
@@ -380,8 +395,10 @@ const drawNotes = (p: Painter, report: AestheticsReport) => {
     p.text(desc(item.label, item.score), card.x + 62 + labelWidth, y + 4, { size: 16, weight: 500, color: MUTED, family: NUMERIC_FONT });
     p.text(item.group, card.x + card.w - 28, y + 3, { size: 12, color: "rgba(44,44,43,0.34)", align: "right", family: NUMERIC_FONT });
     y += 42;
-    y += p.wrap(item.text, card.x + 50, y, innerW - 22, 24, 44, "rgba(44,44,43,0.7)") + 24;
-    p.line(card.x + 28, y - 10, card.x + card.w - 28, y - 10);
+    y += p.wrap(item.text, card.x + 50, y, innerW - 22, 24, 44, "rgba(44,44,43,0.7)") + 30;
+    if (y < card.y + card.h - 30) {
+      p.line(card.x + 28, y - 12, card.x + card.w - 28, y - 12);
+    }
   });
   p.y += h + 20;
 };
@@ -398,7 +415,7 @@ const drawHistory = (p: Painter, report: AestheticsReport) => {
 
 const drawList = (p: Painter, title: string, sub: string, items: string[][]) => {
   const innerW = p.cw - 56;
-  const h = 112 + items.reduce((sum, [, text]) => sum + 60 + p.measure(text, innerW - 22, 24, 44), 0);
+  const h = 126 + items.reduce((sum, [, text]) => sum + 72 + p.measure(text, innerW - 22, 24, 44), 0);
   const card = p.card(h);
   p.header(title, sub, card.x + 28, card.y + 24, innerW);
   let y = card.y + 94;
@@ -411,13 +428,13 @@ const drawList = (p: Painter, title: string, sub: string, items: string[][]) => 
     p.ctx.restore();
     p.text(itemTitle, card.x + 50, y, { size: 22, weight: 700, color: INK });
     y += 42;
-    y += p.wrap(text, card.x + 50, y, innerW - 22, 24, 44, "rgba(44,44,43,0.7)") + 24;
+    y += p.wrap(text, card.x + 50, y, innerW - 22, 24, 44, "rgba(44,44,43,0.7)") + 30;
   });
   p.y += h + 20;
 };
 
 const drawA = (p: Painter, report: AestheticsReport) => {
-  drawSummaryCard(p, "总体结论", report.lingeringType, report.summary, report.tags);
+  drawSummaryCard(p, "总体结论", report.lingeringType, report.summary, report.tags, { bracketSub: true });
   drawAxis(p, "九维坐标", reportRadar(report));
   drawNotes(p, report);
   drawHistory(p, report);
