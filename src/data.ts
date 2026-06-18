@@ -1,3 +1,5 @@
+import type { LingeringType } from "./types";
+
 export interface PresetSample {
   title: string;
   author: string;
@@ -78,7 +80,7 @@ export interface ThemeVibe {
     honesty: number;
     culture: number;
   };
-  lingeringType: string;
+  lingeringType: LingeringType;
   authorRef: string;
   example: string;
 }

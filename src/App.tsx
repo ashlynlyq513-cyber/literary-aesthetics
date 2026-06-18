@@ -42,6 +42,8 @@ interface BookmarkItem {
 
 type DetailFieldKey = keyof AestheticsReport["details"];
 type ScoreFieldKey = keyof AestheticsReport["scores"];
+const LINGERING_TYPES = ["回甘", "苦涩", "清冽", "烟熏"] as const;
+type LingeringType = (typeof LINGERING_TYPES)[number];
 
 const DETAIL_GROUPS: {
   id: "core" | "extended" | "meta";
@@ -91,6 +93,46 @@ const buildDetailFallback = (label: string, score: DimensionScore, fallback: str
   return `${label}当前位于 ${score.value} 分区间。${score.desc}${fallback}`;
 };
 
+const normalizeLingeringType = (value: unknown, lingeringScore?: number): LingeringType => {
+  if (typeof value === "string") {
+    const matched = LINGERING_TYPES.find((type) => value.trim() === type || value.includes(type));
+    if (matched) return matched;
+  }
+
+  const score = typeof lingeringScore === "number" ? lingeringScore : 50;
+  if (score < 25) return "清冽";
+  if (score < 55) return "回甘";
+  if (score < 75) return "苦涩";
+  return "烟熏";
+};
+
+const normalizeAestheticsReport = (report: any): AestheticsReport => {
+  if (!report || typeof report !== "object") return report;
+  return {
+    ...report,
+    lingeringType: normalizeLingeringType(report.lingeringType, report.scores?.lingering?.value),
+  };
+};
+
+const normalizeComparisonReport = (report: any): ComparisonReport => {
+  if (!report || typeof report !== "object") return report;
+  return {
+    ...report,
+    textA: report.textA
+      ? {
+          ...report.textA,
+          lingeringType: normalizeLingeringType(report.textA.lingeringType, report.textA.scores?.lingering),
+        }
+      : report.textA,
+    textB: report.textB
+      ? {
+          ...report.textB,
+          lingeringType: normalizeLingeringType(report.textB.lingeringType, report.textB.scores?.lingering),
+        }
+      : report.textB,
+  };
+};
+
 const getDimensionDetailGroups = (report: AestheticsReport) => {
   return DETAIL_GROUPS.map((group) => ({
     ...group,
@@ -106,13 +148,13 @@ const getDimensionDetailGroups = (report: AestheticsReport) => {
 
 const getFlavorBadgeColor = (type: string) => {
   switch (type) {
-    case "鍥炵敇":
+    case "回甘":
       return "text-[#4F5F45] border-[#7E9272]/45 bg-[#EEF3E8]";
-    case "鑻︽订":
+    case "苦涩":
       return "text-[#6A5140] border-[#A07F68]/45 bg-[#F3E5DA]";
-    case "娓呭喗":
+    case "清冽":
       return "text-[#44616A] border-[#6E8A93]/45 bg-[#E7F0F2]";
-    case "鐑熺啅":
+    case "烟熏":
       return "text-[#66586E] border-[#93839B]/45 bg-[#EFEAF2]";
     default:
       return "text-[#4F5F45] border-[#7E9272]/45 bg-[#EEF3E8]";
@@ -946,16 +988,16 @@ export default function App() {
 
     if (mode === "A" && analysisReport) {
       textVal = inputText;
-      rep = analysisReport;
+      rep = normalizeAestheticsReport(analysisReport);
       titleVal = `${inputText.slice(0, 15)}${inputText.length > 15 ? "..." : ""}`;
     } else if (mode === "B" && compareReport) {
       textVal = textA;
       textBVal = textB;
-      compRep = compareReport;
+      compRep = normalizeComparisonReport(compareReport);
       titleVal = `比对: ${textA.slice(0, 8)} / ${textB.slice(0, 8)}`;
     } else if (mode === "C" && diagnosisReport) {
       textVal = diagnoseText;
-      rep = diagnosisReport;
+      rep = normalizeAestheticsReport(diagnosisReport);
       titleVal = `诊断: ${diagnoseText.slice(0, 15)}${diagnoseText.length > 15 ? "..." : ""}`;
     } else {
       return;
@@ -1000,14 +1042,14 @@ export default function App() {
     setActiveTab(item.mode);
     if (item.mode === "A") {
       setInputText(item.text);
-      setAnalysisReport(item.report);
+      setAnalysisReport(item.report ? normalizeAestheticsReport(item.report) : null);
     } else if (item.mode === "B") {
       setTextA(item.text);
       setTextB(item.textB || "");
-      setCompareReport(item.compareReport);
+      setCompareReport(item.compareReport ? normalizeComparisonReport(item.compareReport) : null);
     } else if (item.mode === "C") {
       setDiagnoseText(item.text);
-      setDiagnosisReport(item.report);
+      setDiagnosisReport(item.report ? normalizeAestheticsReport(item.report) : null);
     }
     setArchiveOpen(false);
   };
@@ -1085,7 +1127,7 @@ export default function App() {
         body: JSON.stringify({ mode: "A", text: customDraftText })
       });
         const data = await parseApiResponse(res);
-      const finalData = data.fallback ? data.data : data;
+      const finalData = normalizeAestheticsReport(data.fallback ? data.data : data);
 
       // Extract scores and compare similarity with custom targets
       const draftScores = finalData.scores;
@@ -1177,11 +1219,11 @@ export default function App() {
       const finalData = data.fallback ? data.data : data;
 
       if (mode === "B") {
-        setCompareReport(finalData);
+        setCompareReport(normalizeComparisonReport(finalData));
       } else if (mode === "A") {
-        setAnalysisReport(finalData);
+        setAnalysisReport(normalizeAestheticsReport(finalData));
       } else {
-        setDiagnosisReport(finalData);
+        setDiagnosisReport(normalizeAestheticsReport(finalData));
       }
     } catch (e) {
       console.error(e);

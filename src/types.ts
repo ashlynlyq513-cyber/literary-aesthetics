@@ -3,6 +3,8 @@ export interface DimensionScore {
   desc: string;
 }
 
+export type LingeringType = "回甘" | "苦涩" | "清冽" | "烟熏";
+
 export interface AestheticsModelScores {
   temperature: DimensionScore;
   density: DimensionScore;
@@ -23,7 +25,7 @@ export interface Suggestion {
 
 export interface AestheticsReport {
   scores: AestheticsModelScores;
-  lingeringType: string;
+  lingeringType: LingeringType;
   tags: string[];
   summary: string;
   details: {
@@ -67,7 +69,7 @@ export interface ComparisonReport {
       honesty: number;
       culture: number;
     };
-    lingeringType: string;
+    lingeringType: LingeringType;
     summary: string;
   };
   textB: {
@@ -83,7 +85,7 @@ export interface ComparisonReport {
       honesty: number;
       culture: number;
     };
-    lingeringType: string;
+    lingeringType: LingeringType;
     summary: string;
   };
   comparison: ComparisonDimension[];

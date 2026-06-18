@@ -13,6 +13,9 @@ const JSON_SCHEMA_TYPES = {
   INTEGER: "integer",
 } as const;
 
+const LINGERING_TYPES = ["回甘", "苦涩", "清冽", "烟熏"] as const;
+type LingeringType = (typeof LINGERING_TYPES)[number];
+
 const DIMENSION_LABELS = [
   "温度",
   "密度",
@@ -31,7 +34,8 @@ const OUTPUT_GUARDRAILS = `
 2. 输出结果必须由模型根据本次用户输入即时生成，禁止返回示例、占位文案、模板套话或静态填充数据。
 3. 分数、标签、判断、建议必须绑定用户输入、待分析文本或用户设置的九维参数，不得凭空套用固定样本。
 4. JSON 字符串值不得出现乱码、无意义字符、"lorem ipsum"、"示例"、"占位"、"mock"、"fallback" 等非真实结果标记。
-5. 除指定 JSON 之外，不输出 Markdown、解释性前后缀或代码块。
+5. lingeringType 是整篇文字的总体余味定性，必须且只能从「回甘 / 苦涩 / 清冽 / 烟熏」四种里选择最匹配的一种；不得输出组合词、解释词、后缀词或其他类型。
+6. 除指定 JSON 之外，不输出 Markdown、解释性前后缀或代码块。
 `.trim();
 
 const SYSTEM_INSTRUCTION = `
@@ -75,7 +79,7 @@ const ANALYZE_RESPONSE_SCHEMA = {
         "culture",
       ],
     },
-    lingeringType: { type: JSON_SCHEMA_TYPES.STRING },
+    lingeringType: lingeringTypeSchema(),
     tags: { type: JSON_SCHEMA_TYPES.ARRAY, items: { type: JSON_SCHEMA_TYPES.STRING } },
     summary: { type: JSON_SCHEMA_TYPES.STRING },
     details: {
@@ -193,6 +197,13 @@ function scoreSchema() {
   };
 }
 
+function lingeringTypeSchema() {
+  return {
+    type: JSON_SCHEMA_TYPES.STRING,
+    enum: LINGERING_TYPES,
+  };
+}
+
 function compareSideSchema() {
   return {
     type: JSON_SCHEMA_TYPES.OBJECT,
@@ -223,11 +234,50 @@ function compareSideSchema() {
           "culture",
         ],
       },
-      lingeringType: { type: JSON_SCHEMA_TYPES.STRING },
+      lingeringType: lingeringTypeSchema(),
       summary: { type: JSON_SCHEMA_TYPES.STRING },
     },
     required: ["scores", "lingeringType", "summary"],
   };
+}
+
+function normalizeLingeringType(value: unknown, lingeringScore?: number): LingeringType {
+  if (typeof value === "string") {
+    const matched = LINGERING_TYPES.find((type) => value.trim() === type || value.includes(type));
+    if (matched) return matched;
+  }
+
+  const score = typeof lingeringScore === "number" ? lingeringScore : 50;
+  if (score < 25) return "清冽";
+  if (score < 55) return "回甘";
+  if (score < 75) return "苦涩";
+  return "烟熏";
+}
+
+function normalizeAnalyzeReport(report: any) {
+  if (!report || typeof report !== "object") return report;
+  report.lingeringType = normalizeLingeringType(
+    report.lingeringType,
+    report.scores?.lingering?.value,
+  );
+  return report;
+}
+
+function normalizeCompareReport(report: any) {
+  if (!report || typeof report !== "object") return report;
+  if (report.textA) {
+    report.textA.lingeringType = normalizeLingeringType(
+      report.textA.lingeringType,
+      report.textA.scores?.lingering,
+    );
+  }
+  if (report.textB) {
+    report.textB.lingeringType = normalizeLingeringType(
+      report.textB.lingeringType,
+      report.textB.scores?.lingering,
+    );
+  }
+  return report;
 }
 
 export function extractJsonPayload(text: string) {
@@ -340,6 +390,7 @@ ${textA || ""}
 ${textB || ""}
 
 请输出九维度分数、关键维度对比、总评与文学史定位。每项判断必须引用或指向文本细节。
+文本 A 与文本 B 的 lingeringType 都必须从「回甘 / 苦涩 / 清冽 / 烟熏」四种里各选最匹配的一种。
 `.trim();
 
       const responseText = await callModel({
@@ -348,7 +399,7 @@ ${textB || ""}
         temperature: 0.3,
       });
 
-      return { status: 200, body: JSON.parse(extractJsonPayload(responseText)) };
+      return { status: 200, body: normalizeCompareReport(JSON.parse(extractJsonPayload(responseText))) };
     }
 
     const modeInstruction =
@@ -363,6 +414,7 @@ ${textB || ""}
 ${text || ""}
 
 ${modeInstruction}
+总体余味定性必须从「回甘 / 苦涩 / 清冽 / 烟熏」四种里选最匹配的一种，写入 JSON 字段 lingeringType。
 `.trim();
 
     const responseText = await callModel({
@@ -371,7 +423,7 @@ ${modeInstruction}
       temperature: 0.4,
     });
 
-    return { status: 200, body: JSON.parse(extractJsonPayload(responseText)) };
+    return { status: 200, body: normalizeAnalyzeReport(JSON.parse(extractJsonPayload(responseText))) };
   } catch (error) {
     console.error("Model API call failed:", error);
     return buildAnalyzeFailure(error);

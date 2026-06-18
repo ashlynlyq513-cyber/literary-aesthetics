@@ -3,6 +3,9 @@ const MODEL_API_KEY = process.env.MODEL_API_KEY || "";
 const MODEL_NAME =
   process.env.MODEL_NAME || "[gcli转] gemini-3.1-flash-lite-preview";
 
+const LINGERING_TYPES = ["回甘", "苦涩", "清冽", "烟熏"] as const;
+type LingeringType = (typeof LINGERING_TYPES)[number];
+
 const SYSTEM_INSTRUCTION = `
 你是一位极其资深的文学品鉴专家与批评家，掌握一套名为「文字审美模型」的分析体系。
 
@@ -21,6 +24,7 @@ const SYSTEM_INSTRUCTION = `
 - 分析语言要精准、克制、富有文学感，不要使用廉价夸赞。
 - 分数必须和文本细节绑定，不能空泛打分。
 - 需要给出可读、可引用的结论，而非模板废话。
+- lingeringType 是整篇文字的总体余味定性，必须且只能从「回甘 / 苦涩 / 清冽 / 烟熏」四种里选择最匹配的一种；不得输出组合词、解释词、后缀词或其他类型。
 - 除非特别要求，否则只返回合法 JSON，不要输出 Markdown 代码块。
 `.trim();
 
@@ -52,7 +56,7 @@ const ANALYZE_RESPONSE_SCHEMA = {
         "culture",
       ],
     },
-    lingeringType: { type: "string" },
+    lingeringType: lingeringTypeSchema(),
     tags: { type: "array", items: { type: "string" } },
     summary: { type: "string" },
     details: {
@@ -156,6 +160,13 @@ function scoreSchema() {
   };
 }
 
+function lingeringTypeSchema() {
+  return {
+    type: "string",
+    enum: LINGERING_TYPES,
+  };
+}
+
 function compareSideSchema() {
   return {
     type: "object",
@@ -186,11 +197,50 @@ function compareSideSchema() {
           "culture",
         ],
       },
-      lingeringType: { type: "string" },
+      lingeringType: lingeringTypeSchema(),
       summary: { type: "string" },
     },
     required: ["scores", "lingeringType", "summary"],
   };
+}
+
+function normalizeLingeringType(value: unknown, lingeringScore?: number): LingeringType {
+  if (typeof value === "string") {
+    const matched = LINGERING_TYPES.find((type) => value.trim() === type || value.includes(type));
+    if (matched) return matched;
+  }
+
+  const score = typeof lingeringScore === "number" ? lingeringScore : 50;
+  if (score < 25) return "清冽";
+  if (score < 55) return "回甘";
+  if (score < 75) return "苦涩";
+  return "烟熏";
+}
+
+function normalizeAnalyzeReport(report: any) {
+  if (!report || typeof report !== "object") return report;
+  report.lingeringType = normalizeLingeringType(
+    report.lingeringType,
+    report.scores?.lingering?.value,
+  );
+  return report;
+}
+
+function normalizeCompareReport(report: any) {
+  if (!report || typeof report !== "object") return report;
+  if (report.textA) {
+    report.textA.lingeringType = normalizeLingeringType(
+      report.textA.lingeringType,
+      report.textA.scores?.lingering,
+    );
+  }
+  if (report.textB) {
+    report.textB.lingeringType = normalizeLingeringType(
+      report.textB.lingeringType,
+      report.textB.scores?.lingering,
+    );
+  }
+  return report;
 }
 
 function extractJsonPayload(text: string) {
@@ -257,6 +307,7 @@ ${textA || ""}
 ${textB || ""}
 
 请给出九维度分数、对比说明、总评与文学史定位。
+文字 A 与文字 B 的 lingeringType 都必须从「回甘 / 苦涩 / 清冽 / 烟熏」四种里各选最匹配的一种。
 `.trim();
 
       const responseText = await callModel({
@@ -265,7 +316,7 @@ ${textB || ""}
         temperature: 0.3,
       });
 
-      return JSON.parse(extractJsonPayload(responseText));
+      return normalizeCompareReport(JSON.parse(extractJsonPayload(responseText)));
     }
 
     const modeInstruction =
@@ -280,6 +331,7 @@ ${textB || ""}
 ${text || ""}
 
 ${modeInstruction}
+总体余味定性必须从「回甘 / 苦涩 / 清冽 / 烟熏」四种里选最匹配的一种，写入 JSON 字段 lingeringType。
 `.trim();
 
     const responseText = await callModel({
@@ -288,7 +340,7 @@ ${modeInstruction}
       temperature: 0.4,
     });
 
-    return JSON.parse(extractJsonPayload(responseText));
+    return normalizeAnalyzeReport(JSON.parse(extractJsonPayload(responseText)));
   } catch (error) {
     console.error("Model API call failed:", error);
     return {
