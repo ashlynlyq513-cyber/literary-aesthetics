@@ -2,23 +2,22 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Sparkles,
-  BookOpen,
   ArrowRightLeft,
   PenTool,
   Sliders,
-  MessageSquare,
   Bookmark,
   RotateCcw,
-  Compass,
-  ArrowRight,
   RefreshCw,
   CornerDownRight,
   Info,
-  Trash2,
   Download,
   Check
 } from "lucide-react";
 import html2canvas from "html2canvas";
+import type { BookmarkItem } from "./app-types";
+import ArchiveDrawer from "./components/ArchiveDrawer";
+import ChatPanel from "./components/ChatPanel";
+import FlavorGlossary from "./components/FlavorGlossary";
 import RadarChart from "./components/RadarChart";
 import { PRESET_SAMPLES, PRES_COMPARE_SAMPLES, STYLE_VIBES } from "./data";
 import {
@@ -27,17 +26,6 @@ import {
   ComparisonReport,
   DimensionScore
 } from "./types";
-
-interface BookmarkItem {
-  id: string;
-  title: string;
-  text: string;
-  textB?: string;
-  mode: "A" | "B" | "C";
-  timestamp: string;
-  report?: any;
-  compareReport?: any;
-}
 
 type DetailFieldKey = keyof AestheticsReport["details"];
 type ScoreFieldKey = keyof AestheticsReport["scores"];
@@ -53,42 +41,54 @@ const DETAIL_GROUPS: {
     accent: string;
     fallback: string;
   }[];
+const DETAIL_GROUPS: {
+  id: "core" | "extended" | "meta";
+  title: string;
+  subtitle: string;
+  dimensions: {
+    label: string;
+    scoreKey: ScoreFieldKey;
+    detailKey: DetailFieldKey;
+    accent: string;
+    fallback: string;
+  }[];
 }[] = [
   {
     id: "core",
-    title: "核心轴",
-    subtitle: "温度 / 密度 / 透明度 / 余韵",
+    title: "????",
+    subtitle: "?? / ?? / ??? / ??",
     dimensions: [
-      { label: "温度", scoreKey: "temperature", detailKey: "temperatureAnalysis", accent: "#8C927F", fallback: "它决定文字与读者之间的心理距离，也决定情绪是贴近还是后撤。" },
-      { label: "密度", scoreKey: "density", detailKey: "densityAnalysis", accent: "#B08968", fallback: "它影响阅读时的呼吸节奏，决定句子是留白通透，还是层层压紧。" },
-      { label: "透明度", scoreKey: "transparency", detailKey: "transparencyAnalysis", accent: "#7C9A92", fallback: "它决定意义是直接抵达，还是需要读者在折射与回味中慢慢解开。" },
-      { label: "余韵", scoreKey: "lingering", detailKey: "lingeringAnalysis", accent: "#C08C6A", fallback: "它决定文本离开之后还会在身体里停留多久，以及留下的是清冽、回甘还是烟熏。" },
+      { label: "??", scoreKey: "temperature", detailKey: "temperatureAnalysis", accent: "#8C927F", fallback: "?????????????????????????????" },
+      { label: "??", scoreKey: "density", detailKey: "densityAnalysis", accent: "#B08968", fallback: "?????????????????????????????" },
+      { label: "???", scoreKey: "transparency", detailKey: "transparencyAnalysis", accent: "#7C9A92", fallback: "?????????????????????????????" },
+      { label: "??", scoreKey: "lingering", detailKey: "lingeringAnalysis", accent: "#C08C6A", fallback: "????????????????????????????????????" },
     ],
   },
   {
     id: "extended",
-    title: "扩展轴",
-    subtitle: "张力 / 意象域 / 时间感",
+    title: "????",
+    subtitle: "?? / ??? / ???",
     dimensions: [
-      { label: "张力", scoreKey: "tension", detailKey: "tensionAnalysis", accent: "#9E6A6A", fallback: "它体现句内冲突与蓄势程度，决定文本是舒缓流过，还是暗暗绷紧。" },
-      { label: "意象域", scoreKey: "imagery", detailKey: "imageryAnalysis", accent: "#6B8E73", fallback: "它反映文本主要借哪一类物质世界来建立感知与隐喻的通道。" },
-      { label: "时间感", scoreKey: "time", detailKey: "timeAnalysis", accent: "#7A86A1", fallback: "它决定叙述是压缩、概括、停驻还是延缓，关系到阅读中的现场感。" },
+      { label: "??", scoreKey: "tension", detailKey: "tensionAnalysis", accent: "#9E6A6A", fallback: "??????????????????????????????" },
+      { label: "???", scoreKey: "imagery", detailKey: "imageryAnalysis", accent: "#6B8E73", fallback: "???????????????????????????" },
+      { label: "???", scoreKey: "time", detailKey: "timeAnalysis", accent: "#7A86A1", fallback: "??????????????????????????????" },
     ],
   },
   {
     id: "meta",
-    title: "元层级",
-    subtitle: "诚实度 / 文化层",
+    title: "???",
+    subtitle: "??? / ???",
     dimensions: [
-      { label: "诚实度", scoreKey: "honesty", detailKey: "honestyAnalysis", accent: "#8B7355", fallback: "它是质量底线，判断文字是在诚实地承受经验，还是在替情绪表演。" },
-      { label: "文化层", scoreKey: "culture", detailKey: "cultureAnalysis", accent: "#A47C57", fallback: "它显示文本与传统、体裁和时代话语的对话关系，是一种隐性的历史回声。" },
+      { label: "???", scoreKey: "honesty", detailKey: "honestyAnalysis", accent: "#8B7355", fallback: "??????????????????????????????" },
+      { label: "???", scoreKey: "culture", detailKey: "cultureAnalysis", accent: "#A47C57", fallback: "?????????????????????????????????" },
     ],
   },
 ];
 
 const buildDetailFallback = (label: string, score: DimensionScore, fallback: string) => {
-  return `${label}当前位于 ${score.value} 分区间。${score.desc}${fallback}`;
+  return `${label}???? ${score.value} ????${score.desc}${fallback}`;
 };
+
 
 const getDimensionDetailGroups = (report: AestheticsReport) => {
   return DETAIL_GROUPS.map((group) => ({
@@ -105,13 +105,13 @@ const getDimensionDetailGroups = (report: AestheticsReport) => {
 
 const getFlavorBadgeColor = (type: string) => {
   switch (type) {
-    case "鍥炵敇":
+    case "閸ョ偟鏁?:
       return "text-[#4F5F45] border-[#7E9272]/45 bg-[#EEF3E8]";
-    case "鑻︽订":
+    case "閼伙附璁?:
       return "text-[#6A5140] border-[#A07F68]/45 bg-[#F3E5DA]";
-    case "娓呭喗":
+    case "濞撳懎鍠?:
       return "text-[#44616A] border-[#6E8A93]/45 bg-[#E7F0F2]";
-    case "鐑熺啅":
+    case "閻戠喓鍟?:
       return "text-[#66586E] border-[#93839B]/45 bg-[#EFEAF2]";
     default:
       return "text-[#4F5F45] border-[#7E9272]/45 bg-[#EEF3E8]";
@@ -119,15 +119,15 @@ const getFlavorBadgeColor = (type: string) => {
 };
 
 const getRadarDescriptor = (label: string, value: number) => {
-  if (label === "娓╁害") return value >= 67 ? "鏆栬皟" : value >= 34 ? "娓╁拰" : "鍐疯皟";
-  if (label === "瀵嗗害") return value >= 67 ? "绻佸瘑" : value >= 34 ? "鍖€瀹?" : "鐤忔湕";
-  if (label === "閫忔槑搴?") return value >= 67 ? "骞芥繁" : value >= 34 ? "娓呴€?" : "鐩寸櫧";
-  if (label === "浣欓煹") return value >= 67 ? "娌夋綔" : value >= 34 ? "鍥炵敇" : "鍗虫暎";
-  if (label === "寮犲姏") return value >= 67 ? "绱х环" : value >= 34 ? "鍚紶鍔?" : "鏉惧紱";
-  if (label === "鎰忚薄鍩?") return value >= 67 ? "鎶借薄" : value >= 34 ? "鍏煎叿" : "鍏疯薄";
-  if (label === "鏃堕棿鎰?") return value >= 67 ? "寤剁坏" : value >= 34 ? "鑸掑睍" : "鍑濈缉";
-  if (label === "璇氬疄搴?") return value >= 67 ? "琛ㄦ紨鎰?" : value >= 34 ? "鍏嬪埗" : "鍧﹂湶";
-  if (label === "鏂囧寲灞?") return value >= 67 ? "鏂板彉" : value >= 34 ? "鍏煎" : "浼犵粺";
+  if (label === "濞撯晛瀹?) return value >= 67 ? "閺嗘牞鐨? : value >= 34 ? "濞撯晛鎷? : "閸愮柉鐨?;
+  if (label === "鐎靛棗瀹?) return value >= 67 ? "缁讳礁鐦? : value >= 34 ? "閸栤偓鐎?" : "閻ゅ繑婀?;
+  if (label === "闁繑妲戞惔?") return value >= 67 ? "楠炶姤绻? : value >= 34 ? "濞撳懘鈧?" : "閻╁娅?;
+  if (label === "娴ｆ瑩鐓?) return value >= 67 ? "濞屽缍? : value >= 34 ? "閸ョ偟鏁? : "閸楄櫕鏆?;
+  if (label === "瀵姴濮?) return value >= 67 ? "缁毖呯幆" : value >= 34 ? "閸氼偄绱堕崝?" : "閺夋儳绱?;
+  if (label === "閹板繗钖勯崺?") return value >= 67 ? "閹跺€熻杽" : value >= 34 ? "閸忕厧鍙? : "閸忕柉钖?;
+  if (label === "閺冨爼妫块幇?") return value >= 67 ? "瀵ゅ墎鍧? : value >= 34 ? "閼告帒鐫? : "閸戞繄缂?;
+  if (label === "鐠囨艾鐤勬惔?") return value >= 67 ? "鐞涖劍绱ㄩ幇?" : value >= 34 ? "閸忓鍩? : "閸э箓婀?;
+  if (label === "閺傚洤瀵茬仦?") return value >= 67 ? "閺傛澘褰? : value >= 34 ? "閸忕厧顔? : "娴肩姷绮?;
   return "";
 };
 
@@ -142,11 +142,11 @@ export default function App() {
     try {
       parsed = JSON.parse(rawText);
     } catch {
-      throw new Error(`服务端返回了非 JSON 内容：${rawText.slice(0, 160)}`);
+      throw new Error(`鏈嶅姟绔繑鍥炰簡闈?JSON 鍐呭锛?{rawText.slice(0, 160)}`);
     }
 
     if (!res.ok) {
-      throw new Error(parsed?.detail || parsed?.error || `服务请求失败（${res.status}）`);
+      throw new Error(parsed?.detail || parsed?.error || `鏈嶅姟璇锋眰澶辫触锛?{res.status}锛塦);
     }
 
     return parsed;
@@ -192,7 +192,7 @@ export default function App() {
     {
       id: "init",
       sender: "bot",
-      content: "你好，我已读取并加载「文字审美模型」。这是一套基于叙事学、含混批评、新批评理论构建的文学品鉴模型。\n\n你可以把这里当做你的个人文字档案簿。你可以在此输入任何词章，我们将探寻它在温度、密度、透明度与余韵极谱上的投影。您最近在读什么，或者正在写什么，需要我为您做个解读吗？",
+      content: "浣犲ソ锛屾垜宸茶鍙栧苟鍔犺浇銆屾枃瀛楀缇庢ā鍨嬨€嶃€傝繖鏄竴濂楀熀浜庡彊浜嬪銆佸惈娣锋壒璇勩€佹柊鎵硅瘎鐞嗚鏋勫缓鐨勬枃瀛﹀搧閴存ā鍨嬨€俓n\n浣犲彲浠ユ妸杩欓噷褰撳仛浣犵殑涓汉鏂囧瓧妗ｆ绨裤€備綘鍙互鍦ㄦ杈撳叆浠讳綍璇嶇珷锛屾垜浠皢鎺㈠瀹冨湪娓╁害銆佸瘑搴︺€侀€忔槑搴︿笌浣欓煹鏋佽氨涓婄殑鎶曞奖銆傛偍鏈€杩戝湪璇讳粈涔堬紝鎴栬€呮鍦ㄥ啓浠€涔堬紝闇€瑕佹垜涓烘偍鍋氫釜瑙ｈ鍚楋紵",
       timestamp: new Date()
     }
   ]);
@@ -219,9 +219,9 @@ export default function App() {
     const element = refMap[tab].current;
     const previewWindow = window.open("", "_blank", "noopener,noreferrer");
     if (!element) {
-      setErrorMsg("当前没有可导出的报告内容。");
+      setErrorMsg("褰撳墠娌℃湁鍙鍑虹殑鎶ュ憡鍐呭銆?);
       return;
-      setErrorMsg("当前没有可导出的报告内容。");
+      setErrorMsg("褰撳墠娌℃湁鍙鍑虹殑鎶ュ憡鍐呭銆?);
     }
 
     setSavingMap[tab](true);
@@ -246,8 +246,8 @@ export default function App() {
         }
       });
 
-      const exportTitle = tab === "A" ? "单卷品鉴" : tab === "B" ? "同框对照" : "创作诊断";
-      const exportFilename = `文字审美分析_${exportTitle}_${Date.now()}.png`;
+      const exportTitle = tab === "A" ? "鍗曞嵎鍝侀壌" : tab === "B" ? "鍚屾瀵圭収" : "鍒涗綔璇婃柇";
+      const exportFilename = `鏂囧瓧瀹＄編鍒嗘瀽_${exportTitle}_${Date.now()}.png`;
       const exportBlob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((value) => resolve(value), "image/png", 1);
       });
@@ -266,12 +266,12 @@ export default function App() {
       exportLink.remove();
       setTimeout(() => URL.revokeObjectURL(exportUrl), 1000);
       
-      const title = tab === "A" ? "单卷品藻" : tab === "B" ? "同框对照" : "创作诊断";
-      link.download = `文字审美分析_${title}_${Date.now()}.png`;
+      const title = tab === "A" ? "鍗曞嵎鍝佽椈" : tab === "B" ? "鍚屾瀵圭収" : "鍒涗綔璇婃柇";
+      link.download = `鏂囧瓧瀹＄編鍒嗘瀽_${title}_${Date.now()}.png`;
       
     } catch (e) {
-      setErrorMsg("保存长图失败，请稍后重试。");
-      console.error("生成长图出错:", e);
+      setErrorMsg("淇濆瓨闀垮浘澶辫触锛岃绋嶅悗閲嶈瘯銆?);
+      console.error("鐢熸垚闀垮浘鍑洪敊:", e);
     } finally {
       setSavingMap[tab](false);
     }
@@ -281,15 +281,15 @@ export default function App() {
     const refMap = { A: tabAReportRef, B: tabBReportRef, C: tabCReportRef };
     const setSavingMap = { A: setExportingA, B: setExportingB, C: setExportingC };
     const titleMap = {
-      A: "单卷品鉴",
-      B: "同框对照",
-      C: "创作诊断",
+      A: "鍗曞嵎鍝侀壌",
+      B: "鍚屾瀵圭収",
+      C: "鍒涗綔璇婃柇",
     } as const;
     const element = refMap[tab].current;
     const previewWindow: Window | null = null;
 
     if (!element) {
-      setErrorMsg("当前没有可导出的报告内容。");
+      setErrorMsg("褰撳墠娌℃湁鍙鍑虹殑鎶ュ憡鍐呭銆?);
       return;
     }
 
@@ -317,7 +317,7 @@ export default function App() {
         },
       });
 
-      const exportFilename = `文字审美分析_${titleMap[tab]}_${Date.now()}.png`;
+      const exportFilename = `鏂囧瓧瀹＄編鍒嗘瀽_${titleMap[tab]}_${Date.now()}.png`;
       const dataUrl = canvas.toDataURL("image/png");
       if (previewWindow) {
         previewWindow.document.open();
@@ -360,7 +360,7 @@ export default function App() {
             </head>
             <body>
               <main>
-                <p>长图已生成。如未自动下载，可长按或右键图片保存。</p>
+                <p>闀垮浘宸茬敓鎴愩€傚鏈嚜鍔ㄤ笅杞斤紝鍙暱鎸夋垨鍙抽敭鍥剧墖淇濆瓨銆?/p>
                 <img src="${dataUrl}" alt="${exportFilename}" />
               </main>
             </body>
@@ -386,8 +386,8 @@ export default function App() {
       }
     } catch (e) {
       previewWindow?.close();
-      setErrorMsg("保存长图失败，请稍后重试。");
-      console.error("生成长图出错:", e);
+      setErrorMsg("淇濆瓨闀垮浘澶辫触锛岃绋嶅悗閲嶈瘯銆?);
+      console.error("鐢熸垚闀垮浘鍑洪敊:", e);
     } finally {
       setSavingMap[tab](false);
     }
@@ -443,7 +443,7 @@ export default function App() {
         node.style.marginTop = "12px";
       }
     });
-    snapshot.querySelectorAll('button[title="鏀跺綍姝ゅ嵎涔︽湱"], button[title="鏀跺綍鍚屾瀵圭収鏈?"]').forEach((node) => {
+    snapshot.querySelectorAll('button[title="閺€璺虹秿濮濄倕宓庢稊锔芥贡"], button[title="閺€璺虹秿閸氬本顢嬬€靛湱鍙庨張?"]').forEach((node) => {
       (node as HTMLElement).style.display = "none";
     });
     inlineExportStyles(element, snapshot);
@@ -541,7 +541,7 @@ export default function App() {
     topBar.style.marginBottom = "46px";
     topBar.style.paddingBottom = "14px";
     topBar.style.borderBottom = "1px solid rgba(44,44,43,0.12)";
-    topBar.innerHTML = `<div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;">Volume 04 // Sensory Anthology</div><div style="font-size:12px;letter-spacing:0.12em;">Archives 档案馆</div>`;
+    topBar.innerHTML = `<div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;font-weight:700;">Volume 04 // Sensory Anthology</div><div style="font-size:12px;letter-spacing:0.12em;">Archives 妗ｆ棣?/div>`;
     header.appendChild(topBar);
 
     const brandStamp = document.createElement("div");
@@ -561,9 +561,9 @@ export default function App() {
 
     const heroTitle = document.createElement("div");
     heroTitle.innerHTML = `
-      <div style="font-size:58px;line-height:1.04;font-weight:300;letter-spacing:.04em;">九维·余韵</div>
-      <div style="font-size:32px;line-height:1.2;margin-top:8px;font-style:italic;color:rgba(44,44,43,.72);">Nine-dimensional Afterglow · 文字审美模型</div>
-      <div style="font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:rgba(44,44,43,.46);margin-top:22px;">Literary Aesthetics Model — AI Operation Manual</div>
+      <div style="font-size:58px;line-height:1.04;font-weight:300;letter-spacing:.04em;">涔濈淮路浣欓煹</div>
+      <div style="font-size:32px;line-height:1.2;margin-top:8px;font-style:italic;color:rgba(44,44,43,.72);">Nine-dimensional Afterglow 路 鏂囧瓧瀹＄編妯″瀷</div>
+      <div style="font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:rgba(44,44,43,.46);margin-top:22px;">Literary Aesthetics Model 鈥?AI Operation Manual</div>
     `;
     header.appendChild(heroTitle);
 
@@ -619,7 +619,7 @@ export default function App() {
     spectrumPanel.style.gap = "12px";
 
     const spectrumTitle = document.createElement("div");
-    spectrumTitle.innerHTML = `<div style="font-size:13px;letter-spacing:.24em;text-transform:uppercase;opacity:.58;">Axis Ledger</div><div style="font-size:15px;margin-top:6px;letter-spacing:.08em;">九维光谱记录</div>`;
+    spectrumTitle.innerHTML = `<div style="font-size:13px;letter-spacing:.24em;text-transform:uppercase;opacity:.58;">Axis Ledger</div><div style="font-size:15px;margin-top:6px;letter-spacing:.08em;">涔濈淮鍏夎氨璁板綍</div>`;
     spectrumPanel.appendChild(spectrumTitle);
 
     const radarData = mapScoresToRadar(analysisReport.scores);
@@ -697,7 +697,7 @@ export default function App() {
       return section;
     };
 
-    const flavorSection = createSection("总体余韵定性", "Lingering Style");
+    const flavorSection = createSection("鎬讳綋浣欓煹瀹氭€?, "Lingering Style");
     const flavorTop = document.createElement("div");
     flavorTop.style.display = "flex";
     flavorTop.style.justifyContent = "space-between";
@@ -738,7 +738,7 @@ export default function App() {
     flavorSection.appendChild(summaryNode);
     paper.appendChild(flavorSection);
 
-    const detailSection = createSection("维度详细解析", "Dimension Deep-dives");
+    const detailSection = createSection("缁村害璇︾粏瑙ｆ瀽", "Dimension Deep-dives");
     detailGroups.forEach((group, groupIndex) => {
       const groupCard = document.createElement("div");
       groupCard.style.marginTop = groupIndex === 0 ? "20px" : "18px";
@@ -768,7 +768,7 @@ export default function App() {
         label.style.fontSize = "17px";
         label.style.fontWeight = "600";
         label.style.marginBottom = "8px";
-        label.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${dimension.accent};"></span>${dimension.label}（${dimension.score.value}%）`;
+        label.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${dimension.accent};"></span>${dimension.label}锛?{dimension.score.value}%锛塦;
 
         const text = document.createElement("p");
         text.textContent = dimension.text;
@@ -787,7 +787,7 @@ export default function App() {
     paper.appendChild(detailSection);
 
     if (analysisReport.literaryHistoryVerdict) {
-      const verdictSection = createSection("文学史独立断案", "Independent Scholar Verdict");
+      const verdictSection = createSection("鏂囧鍙茬嫭绔嬫柇妗?, "Independent Scholar Verdict");
       const verdictGrid = document.createElement("div");
       verdictGrid.style.display = "grid";
       verdictGrid.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
@@ -796,15 +796,15 @@ export default function App() {
 
       const verdictItems = [
         {
-          title: "独异风格定性",
+          title: "鐙紓椋庢牸瀹氭€?,
           text: analysisReport.literaryHistoryVerdict.distinctStyle,
         },
         {
-          title: "历史闪光点 / 亮点",
+          title: "鍘嗗彶闂厜鐐?/ 浜偣",
           text: analysisReport.literaryHistoryVerdict.historicalHighlight,
         },
         {
-          title: "局限与缺憾 / 主要瑕疵",
+          title: "灞€闄愪笌缂烘喚 / 涓昏鐟曠柕",
           text: analysisReport.literaryHistoryVerdict.criticalDefect,
         },
       ];
@@ -847,7 +847,7 @@ export default function App() {
     footer.style.fontSize = "13px";
     footer.style.letterSpacing = "0.08em";
     footer.style.opacity = "0.72";
-    footer.innerHTML = `<span>@拟态余温Almost Human</span>`;
+    footer.innerHTML = `<span>@鎷熸€佷綑娓〢lmost Human</span>`;
     paper.appendChild(footer);
 
     return paper;
@@ -857,15 +857,15 @@ export default function App() {
     const refMap = { A: tabAReportRef, B: tabBReportRef, C: tabCReportRef };
     const setSavingMap = { A: setExportingA, B: setExportingB, C: setExportingC };
     const titleMap = {
-      A: "单卷品鉴",
-      B: "同框对照",
-      C: "创作诊断",
+      A: "鍗曞嵎鍝侀壌",
+      B: "鍚屾瀵圭収",
+      C: "鍒涗綔璇婃柇",
     } as const;
     const element = refMap[tab].current;
     let exportHost: HTMLDivElement | null = null;
 
     if (!element) {
-      setErrorMsg("当前没有可导出的报告内容。");
+      setErrorMsg("褰撳墠娌℃湁鍙鍑虹殑鎶ュ憡鍐呭銆?);
       return;
     }
 
@@ -905,7 +905,7 @@ export default function App() {
       document.body.removeChild(exportHost);
       exportHost = null;
 
-      const exportFilename = `文字审美分析_${titleMap[tab]}_${Date.now()}.png`;
+      const exportFilename = `鏂囧瓧瀹＄編鍒嗘瀽_${titleMap[tab]}_${Date.now()}.png`;
       const exportBlob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((value) => resolve(value), "image/png", 1);
       });
@@ -925,8 +925,8 @@ export default function App() {
       document.body.removeChild(exportLink);
       window.setTimeout(() => URL.revokeObjectURL(exportUrl), 1000);
     } catch (e) {
-      setErrorMsg("保存长图失败，请稍后重试。");
-      console.error("生成长图出错:", e);
+      setErrorMsg("淇濆瓨闀垮浘澶辫触锛岃绋嶅悗閲嶈瘯銆?);
+      console.error("鐢熸垚闀垮浘鍑洪敊:", e);
     } finally {
       if (exportHost?.parentNode) {
         exportHost.parentNode.removeChild(exportHost);
@@ -1004,11 +1004,11 @@ export default function App() {
       textVal = textA;
       textBVal = textB;
       compRep = compareReport;
-      titleVal = `比对: ${textA.slice(0, 8)} / ${textB.slice(0, 8)}`;
+      titleVal = `姣斿: ${textA.slice(0, 8)} / ${textB.slice(0, 8)}`;
     } else if (mode === "C" && diagnosisReport) {
       textVal = diagnoseText;
       rep = diagnosisReport;
-      titleVal = `诊断: ${diagnoseText.slice(0, 15)}${diagnoseText.length > 15 ? "..." : ""}`;
+      titleVal = `璇婃柇: ${diagnoseText.slice(0, 15)}${diagnoseText.length > 15 ? "..." : ""}`;
     } else {
       return;
     }
@@ -1084,39 +1084,39 @@ export default function App() {
 
     // Categorization logic based on coordinate weights for rich analysis
     if (t < 35 && d > 65) {
-      styleName = "寒林重墨体 (Frigid Inkwood)";
-      interpretation = "此设定体温极低而信息密度繁密重叠。文字呈现冷酷、理性甚至冰冷的旁观视角，像一柄冰凉的手术刀剖切着现实的细枝末节，意象稠密而极具形式张力。";
+      styleName = "瀵掓灄閲嶅ⅷ浣?(Frigid Inkwood)";
+      interpretation = "姝よ瀹氫綋娓╂瀬浣庤€屼俊鎭瘑搴︾箒瀵嗛噸鍙犮€傛枃瀛楀憟鐜板喎閰枫€佺悊鎬х敋鑷冲啺鍐风殑鏃佽瑙嗚锛屽儚涓€鏌勫啺鍑夌殑鎵嬫湳鍒€鍓栧垏鐫€鐜板疄鐨勭粏鏋濇湯鑺傦紝鎰忚薄绋犲瘑鑰屾瀬鍏峰舰寮忓紶鍔涖€?;
       recommendations = [
-        { author: "鲁迅", work: "《野草》", value: "在冷绝客观、甚至死寂的气氛下建立密集和怪诞的意象符号群，带来极致的精神压迫力。" },
-        { author: "卡夫卡", work: "《城堡》", value: "语言如公文般冰冷澄透，但荒诞和绝望的意象重叠交错、不留温情余地。" }
+        { author: "椴佽繀", work: "銆婇噹鑽夈€?, value: "鍦ㄥ喎缁濆瑙傘€佺敋鑷虫瀵傜殑姘旀皼涓嬪缓绔嬪瘑闆嗗拰鎬癁鐨勬剰璞＄鍙风兢锛屽甫鏉ユ瀬鑷寸殑绮剧鍘嬭揩鍔涖€? },
+        { author: "鍗″か鍗?, work: "銆婂煄鍫°€?, value: "璇█濡傚叕鏂囪埇鍐板喎婢勯€忥紝浣嗚崚璇炲拰缁濇湜鐨勬剰璞￠噸鍙犱氦閿欍€佷笉鐣欐俯鎯呬綑鍦般€? }
       ];
     } else if (t > 65 && d < 35) {
-      styleName = "春晖飞白体 (Warm Breeze)";
-      interpretation = "具有极高的温度体温却保持着极其空灵疏朗的结构。这是坦诚而毫无防线的情感流露，字句简练，大面积留白。文字不着浓墨重彩，却如一缕春日和风吹进读者的心底。";
+      styleName = "鏄ユ櫀椋炵櫧浣?(Warm Breeze)";
+      interpretation = "鍏锋湁鏋侀珮鐨勬俯搴︿綋娓╁嵈淇濇寔鐫€鏋佸叾绌虹伒鐤忔湕鐨勭粨鏋勩€傝繖鏄潶璇氳€屾鏃犻槻绾跨殑鎯呮劅娴侀湶锛屽瓧鍙ョ畝缁冿紝澶ч潰绉暀鐧姐€傛枃瀛椾笉鐫€娴撳ⅷ閲嶅僵锛屽嵈濡備竴缂曟槬鏃ュ拰椋庡惞杩涜鑰呯殑蹇冨簳銆?;
       recommendations = [
-        { author: "沈从文", work: "《边城》", value: "笔触疏淡纯朴、大面积写意留白，叙述中却充斥着湘西苗野最炽烈温热的人性光辉。" },
-        { author: "泰戈尔", work: "《吉檀迦利》", value: "句式极其空灵纯粹，但内在情感虔诚而火热，对生命和造物充满无限炽烈。 " }
+        { author: "娌堜粠鏂?, work: "銆婅竟鍩庛€?, value: "绗旇Е鐤忔贰绾湸銆佸ぇ闈㈢Н鍐欐剰鐣欑櫧锛屽彊杩颁腑鍗村厖鏂ョ潃婀樿タ鑻楅噹鏈€鐐界儓娓╃儹鐨勪汉鎬у厜杈夈€? },
+        { author: "娉版垐灏?, work: "銆婂悏妾€杩﹀埄銆?, value: "鍙ュ紡鏋佸叾绌虹伒绾补锛屼絾鍐呭湪鎯呮劅铏旇瘹鑰岀伀鐑紝瀵圭敓鍛藉拰閫犵墿鍏呮弧鏃犻檺鐐界儓銆?" }
       ];
     } else if (tr > 68 && im > 68) {
-      styleName = "云缭雾障体 (Symbolic Ambiguity)";
-      interpretation = "含混幽深，意象空间深度扩展。这是一座重彩浓墨的象征主义迷宫。文字的多重语义和隐喻网络互相折射，将读者引向燕卜荪说所言的多重含混，余味沉沉。";
+      styleName = "浜戠辑闆鹃殰浣?(Symbolic Ambiguity)";
+      interpretation = "鍚贩骞芥繁锛屾剰璞＄┖闂存繁搴︽墿灞曘€傝繖鏄竴搴ч噸褰╂祿澧ㄧ殑璞″緛涓讳箟杩峰銆傛枃瀛楃殑澶氶噸璇箟鍜岄殣鍠荤綉缁滀簰鐩告姌灏勶紝灏嗚鑰呭紩鍚戠嚂鍗滆崻璇存墍瑷€鐨勫閲嶅惈娣凤紝浣欏懗娌夋矇銆?;
       recommendations = [
-        { author: "李商隐", work: "《锦瑟》等无题诗", value: "辞采瑰丽奇诡、意境含混朦胧，在言外之意的多维折射上达到了古典美学的巅峰。" },
-        { author: "博尔赫斯", work: "《沙之书》", value: "极深层次的哲学探讨，隐喻网络庞杂并层层相套，每一句话都具有层叠的阐释深度。" }
+        { author: "鏉庡晢闅?, work: "銆婇敠鐟熴€嬬瓑鏃犻璇?, value: "杈為噰鐟颁附濂囪銆佹剰澧冨惈娣锋湨鑳э紝鍦ㄨ█澶栦箣鎰忕殑澶氱淮鎶樺皠涓婅揪鍒颁簡鍙ゅ吀缇庡鐨勫穮宄般€? },
+        { author: "鍗氬皵璧柉", work: "銆婃矙涔嬩功銆?, value: "鏋佹繁灞傛鐨勫摬瀛︽帰璁紝闅愬柣缃戠粶搴炴潅骞跺眰灞傜浉濂楋紝姣忎竴鍙ヨ瘽閮藉叿鏈夊眰鍙犵殑闃愰噴娣卞害銆? }
       ];
     } else if (tr < 32 && h < 32) {
-      styleName = "琉璃赤子体 (Crystalline Sincerity)";
-      interpretation = "澄澈剔透而绝无虚饰。摒弃了一切表演性的修辞和技巧粉饰，文字如一汪清泉直见其底，展现出隐含作者人格最质朴、最不设防的袒露姿态，拥有直击胸腔的力量。";
+      styleName = "鐞夌拑璧ゅ瓙浣?(Crystalline Sincerity)";
+      interpretation = "婢勬緢鍓旈€忚€岀粷鏃犺櫄楗般€傛憭寮冧簡涓€鍒囪〃婕旀€х殑淇緸鍜屾妧宸х矇楗帮紝鏂囧瓧濡備竴姹竻娉夌洿瑙佸叾搴曪紝灞曠幇鍑洪殣鍚綔鑰呬汉鏍兼渶璐ㄦ湸銆佹渶涓嶈闃茬殑琚掗湶濮挎€侊紝鎷ユ湁鐩村嚮鑳歌厰鐨勫姏閲忋€?;
       recommendations = [
-        { author: "萧红", work: "《呼兰河传》", value: "毫无都市文人的矫饰与弄影，纯用最天真干净的直白语流，因绝对的真诚而力透纸背。" },
-        { author: "海明威", work: "《老人与海》", value: "极度洗练的电报体，杜绝一切自我沉醉式的藻饰，展现纯粹而铮铮铁骨的事物本质。" }
+        { author: "钀х孩", work: "銆婂懠鍏版渤浼犮€?, value: "姣棤閮藉競鏂囦汉鐨勭煫楗颁笌寮勫奖锛岀函鐢ㄦ渶澶╃湡骞插噣鐨勭洿鐧借娴侊紝鍥犵粷瀵圭殑鐪熻瘹鑰屽姏閫忕焊鑳屻€? },
+        { author: "娴锋槑濞?, work: "銆婅€佷汉涓庢捣銆?, value: "鏋佸害娲楃粌鐨勭數鎶ヤ綋锛屾潨缁濅竴鍒囪嚜鎴戞矇閱夊紡鐨勮椈楗帮紝灞曠幇绾补鑰岄摦閾搧楠ㄧ殑浜嬬墿鏈川銆? }
       ];
     } else {
-      styleName = "碧涧流泉体 (Aesthetic Stream)";
-      interpretation = `这是一首各极轴互为对位、和谐共鸣的高雅曲调。它的温度适中（${t}/100），密度均衡（${d}/100），透明度（${tr}/100）保持着若隐若现的古典曲径通幽感，在张力（${tn}/100）与文化层（${c}/100）里达成了舒适自如的感知平衡。`;
+      styleName = "纰ф锭娴佹硥浣?(Aesthetic Stream)";
+      interpretation = `杩欐槸涓€棣栧悇鏋佽酱浜掍负瀵逛綅銆佸拰璋愬叡楦ｇ殑楂橀泤鏇茶皟銆傚畠鐨勬俯搴﹂€備腑锛?{t}/100锛夛紝瀵嗗害鍧囪　锛?{d}/100锛夛紝閫忔槑搴︼紙${tr}/100锛変繚鎸佺潃鑻ラ殣鑻ョ幇鐨勫彜鍏告洸寰勯€氬菇鎰燂紝鍦ㄥ紶鍔涳紙${tn}/100锛変笌鏂囧寲灞傦紙${c}/100锛夐噷杈炬垚浜嗚垝閫傝嚜濡傜殑鎰熺煡骞宠　銆俙;
       recommendations = [
-        { author: "张爱玲", work: "《传奇》", value: "在密不透风的弄影凡俗尘世里，精准拿捏了华贵藻饰（密度）与世态炎凉（温度）的对立张力。" },
-        { author: "废名", work: "《桥》", value: "以禅宗式的精干刀法切断语言自动化，既有文人画的水气（温度），又带深厚的古典文脉包浆。" }
+        { author: "寮犵埍鐜?, work: "銆婁紶濂囥€?, value: "鍦ㄥ瘑涓嶉€忛鐨勫紕褰卞嚒淇楀皹涓栭噷锛岀簿鍑嗘嬁鎹忎簡鍗庤吹钘婚グ锛堝瘑搴︼級涓庝笘鎬佺値鍑夛紙娓╁害锛夌殑瀵圭珛寮犲姏銆? },
+        { author: "搴熷悕", work: "銆婃ˉ銆?, value: "浠ョ瀹楀紡鐨勭簿骞插垁娉曞垏鏂瑷€鑷姩鍖栵紝鏃㈡湁鏂囦汉鐢荤殑姘存皵锛堟俯搴︼級锛屽張甯︽繁鍘氱殑鍙ゅ吀鏂囪剦鍖呮祮銆? }
       ];
     }
 
@@ -1157,20 +1157,20 @@ export default function App() {
 
       let alignmentFeedback = "";
       if (matchScore >= 85) {
-        alignmentFeedback = "惊人之契合！您的文字极具灵台共鸣。各项轴向分值与设想极其吻合，成功复刻了该美学型态的神韵与肌理。";
+        alignmentFeedback = "鎯婁汉涔嬪鍚堬紒鎮ㄧ殑鏂囧瓧鏋佸叿鐏靛彴鍏遍福銆傚悇椤硅酱鍚戝垎鍊间笌璁炬兂鏋佸叾鍚诲悎锛屾垚鍔熷鍒讳簡璇ョ編瀛﹀瀷鎬佺殑绁為煹涓庤倢鐞嗐€?;
       } else if (matchScore >= 65) {
-        alignmentFeedback = "神似而形微异。您已大体捕捉到了设想的外在形廓，但在局部维度（如温度或含混程度）尚有微调空间。可参考下方各项轴线的对位指标再次修正。";
+        alignmentFeedback = "绁炰技鑰屽舰寰紓銆傛偍宸插ぇ浣撴崟鎹夊埌浜嗚鎯崇殑澶栧湪褰㈠粨锛屼絾鍦ㄥ眬閮ㄧ淮搴︼紙濡傛俯搴︽垨鍚贩绋嬪害锛夊皻鏈夊井璋冪┖闂淬€傚彲鍙傝€冧笅鏂瑰悇椤硅酱绾跨殑瀵逛綅鎸囨爣鍐嶆淇銆?;
       } else {
-        alignmentFeedback = "笔墨另辟溪径。您的创稿展现了全新的审美特质，各项美学参数具有强烈的个人烙印，相较设定配方，展现出不同方向的光谱极调。";
+        alignmentFeedback = "绗斿ⅷ鍙﹁緹婧緞銆傛偍鐨勫垱绋垮睍鐜颁簡鍏ㄦ柊鐨勫缇庣壒璐紝鍚勯」缇庡鍙傛暟鍏锋湁寮虹儓鐨勪釜浜虹儥鍗帮紝鐩歌緝璁惧畾閰嶆柟锛屽睍鐜板嚭涓嶅悓鏂瑰悜鐨勫厜璋辨瀬璋冦€?;
       }
 
       setCustomTestResult({
         scores: draftScores,
         matchScore,
-        feedback: `${alignmentFeedback}\n\n【实测对比】\n` + 
-          `• 设定温度: ${targetScores.temperature} | 实测温度: ${draftScores.temperature?.value ?? 0} (${draftScores.temperature?.desc ?? ""})\n` +
-          `• 设定密度: ${targetScores.density} | 实测密度: ${draftScores.density?.value ?? 0} (${draftScores.density?.desc ?? ""})\n` +
-          `• 设定透明度: ${targetScores.transparency} | 实测透明度: ${draftScores.transparency?.value ?? 0} (${draftScores.transparency?.desc ?? ""})`
+        feedback: `${alignmentFeedback}\n\n銆愬疄娴嬪姣斻€慭n` + 
+          `鈥?璁惧畾娓╁害: ${targetScores.temperature} | 瀹炴祴娓╁害: ${draftScores.temperature?.value ?? 0} (${draftScores.temperature?.desc ?? ""})\n` +
+          `鈥?璁惧畾瀵嗗害: ${targetScores.density} | 瀹炴祴瀵嗗害: ${draftScores.density?.value ?? 0} (${draftScores.density?.desc ?? ""})\n` +
+          `鈥?璁惧畾閫忔槑搴? ${targetScores.transparency} | 瀹炴祴閫忔槑搴? ${draftScores.transparency?.value ?? 0} (${draftScores.transparency?.desc ?? ""})`
       });
 
     } catch (e) {
@@ -1179,12 +1179,12 @@ export default function App() {
       const mockResultScores: any = {};
       const keys = ["temperature", "density", "transparency", "lingering", "tension", "imagery", "time", "honesty", "culture"];
       keys.forEach(k => {
-        mockResultScores[k] = { value: Math.round(40 + Math.random() * 30), desc: "平滑振荡" };
+        mockResultScores[k] = { value: Math.round(40 + Math.random() * 30), desc: "骞虫粦鎸崱" };
       });
       setCustomTestResult({
         scores: mockResultScores,
         matchScore: 78,
-        feedback: "已采用本地微积分测绘。创本字句工整，与您设想的美学流派具有较高的审美调式亲和度（匹配率约 78%）。"
+        feedback: "宸查噰鐢ㄦ湰鍦板井绉垎娴嬬粯銆傚垱鏈瓧鍙ュ伐鏁达紝涓庢偍璁炬兂鐨勭編瀛︽祦娲惧叿鏈夎緝楂樼殑瀹＄編璋冨紡浜插拰搴︼紙鍖归厤鐜囩害 78%锛夈€?
       });
     } finally {
       setCustomTesting(false);
@@ -1237,7 +1237,7 @@ export default function App() {
       }
     } catch (e) {
       console.error(e);
-      setErrorMsg(e instanceof Error ? e.message : "品鉴服务暂时不可用，请稍后重试。");
+      setErrorMsg(e instanceof Error ? e.message : "鍝侀壌鏈嶅姟鏆傛椂涓嶅彲鐢紝璇风◢鍚庨噸璇曘€?);
     } finally {
       setLoading(false);
     }
@@ -1281,7 +1281,7 @@ export default function App() {
         {
           id: Math.random().toString(),
           sender: "bot",
-          content: "词章的溪流遇到了一丝阻塞。不知您对刚刚讨论哪位作家的风格，或者刚才提及的哪个审美唯度还想继续深探？",
+          content: "璇嶇珷鐨勬邯娴侀亣鍒颁簡涓€涓濋樆濉炪€備笉鐭ユ偍瀵瑰垰鍒氳璁哄摢浣嶄綔瀹剁殑椋庢牸锛屾垨鑰呭垰鎵嶆彁鍙婄殑鍝釜瀹＄編鍞害杩樻兂缁х画娣辨帰锛?,
           timestamp: new Date()
         }
       ]);
@@ -1291,43 +1291,43 @@ export default function App() {
   };
 
   const getScoreDescriptor = (dimension: keyof AestheticsReport["scores"], value: number) => {
-    if (dimension === "temperature") return value >= 67 ? "暖调" : value >= 34 ? "温和" : "冷调";
-    if (dimension === "density") return value >= 67 ? "繁密" : value >= 34 ? "匀实" : "疏朗";
-    if (dimension === "transparency") return value >= 67 ? "幽深" : value >= 34 ? "清透" : "直白";
-    if (dimension === "lingering") return value >= 67 ? "沉潜" : value >= 34 ? "回甘" : "即散";
-    if (dimension === "tension") return value >= 67 ? "紧绷" : value >= 34 ? "含张力" : "松弛";
-    if (dimension === "imagery") return value >= 67 ? "抽象" : value >= 34 ? "兼具" : "具象";
-    if (dimension === "time") return value >= 67 ? "延绵" : value >= 34 ? "舒展" : "凝缩";
-    if (dimension === "honesty") return value >= 67 ? "表演感" : value >= 34 ? "克制" : "坦露";
-    return value >= 67 ? "新变" : value >= 34 ? "兼容" : "传统";
+    if (dimension === "temperature") return value >= 67 ? "鏆栬皟" : value >= 34 ? "娓╁拰" : "鍐疯皟";
+    if (dimension === "density") return value >= 67 ? "绻佸瘑" : value >= 34 ? "鍖€瀹? : "鐤忔湕";
+    if (dimension === "transparency") return value >= 67 ? "骞芥繁" : value >= 34 ? "娓呴€? : "鐩寸櫧";
+    if (dimension === "lingering") return value >= 67 ? "娌夋綔" : value >= 34 ? "鍥炵敇" : "鍗虫暎";
+    if (dimension === "tension") return value >= 67 ? "绱х环" : value >= 34 ? "鍚紶鍔? : "鏉惧紱";
+    if (dimension === "imagery") return value >= 67 ? "鎶借薄" : value >= 34 ? "鍏煎叿" : "鍏疯薄";
+    if (dimension === "time") return value >= 67 ? "寤剁坏" : value >= 34 ? "鑸掑睍" : "鍑濈缉";
+    if (dimension === "honesty") return value >= 67 ? "琛ㄦ紨鎰? : value >= 34 ? "鍏嬪埗" : "鍧﹂湶";
+    return value >= 67 ? "鏂板彉" : value >= 34 ? "鍏煎" : "浼犵粺";
   };
 
   // Format scores for Radar graph delivery
   const mapScoresToRadar = (scores: AestheticsReport["scores"]) => {
     return [
-      { label: "温度", subLabel: "冷冽 / 炽烈", value: scores.temperature.value },
-      { label: "密度", subLabel: "疏朗 / 密植", value: scores.density.value },
-      { label: "透明度", subLabel: "直白 / 幽深", value: scores.transparency.value },
-      { label: "余韵", subLabel: "即散 / 沉淀", value: scores.lingering.value },
-      { label: "张力", subLabel: "松弛 / 紧绷", value: scores.tension.value },
-      { label: "意象域", subLabel: "具象 / 抽象", value: scores.imagery.value },
-      { label: "时间感", subLabel: "压缩 / 延缓", value: scores.time.value },
-      { label: "诚实度", subLabel: "坦露 / 表演", value: scores.honesty.value },
-      { label: "文化层", subLabel: "传统 / 断裂", value: scores.culture.value }
+      { label: "娓╁害", subLabel: "鍐峰喗 / 鐐界儓", value: scores.temperature.value },
+      { label: "瀵嗗害", subLabel: "鐤忔湕 / 瀵嗘", value: scores.density.value },
+      { label: "閫忔槑搴?, subLabel: "鐩寸櫧 / 骞芥繁", value: scores.transparency.value },
+      { label: "浣欓煹", subLabel: "鍗虫暎 / 娌夋穩", value: scores.lingering.value },
+      { label: "寮犲姏", subLabel: "鏉惧紱 / 绱х环", value: scores.tension.value },
+      { label: "鎰忚薄鍩?, subLabel: "鍏疯薄 / 鎶借薄", value: scores.imagery.value },
+      { label: "鏃堕棿鎰?, subLabel: "鍘嬬缉 / 寤剁紦", value: scores.time.value },
+      { label: "璇氬疄搴?, subLabel: "鍧﹂湶 / 琛ㄦ紨", value: scores.honesty.value },
+      { label: "鏂囧寲灞?, subLabel: "浼犵粺 / 鏂", value: scores.culture.value }
     ];
   };
 
   const mapCompareToRadar = (comp: ComparisonReport) => {
     const keys: { k: keyof typeof comp.textA.scores; l: string; sl: string }[] = [
-      { k: "temperature", l: "温度", sl: "冷冽/炽烈" },
-      { k: "density", l: "密度", sl: "疏朗/密植" },
-      { k: "transparency", l: "透明度", sl: "直白/幽深" },
-      { k: "lingering", l: "余韵", sl: "即散/沉淀" },
-      { k: "tension", l: "张力", sl: "松弛/紧绷" },
-      { k: "imagery", l: "意象域", sl: "具象/抽象" },
-      { k: "time", l: "时间感", sl: "压缩/延缓" },
-      { k: "honesty", l: "诚实度", sl: "坦露/表演" },
-      { k: "culture", l: "文化层", sl: "传统/断裂" }
+      { k: "temperature", l: "娓╁害", sl: "鍐峰喗/鐐界儓" },
+      { k: "density", l: "瀵嗗害", sl: "鐤忔湕/瀵嗘" },
+      { k: "transparency", l: "閫忔槑搴?, sl: "鐩寸櫧/骞芥繁" },
+      { k: "lingering", l: "浣欓煹", sl: "鍗虫暎/娌夋穩" },
+      { k: "tension", l: "寮犲姏", sl: "鏉惧紱/绱х环" },
+      { k: "imagery", l: "鎰忚薄鍩?, sl: "鍏疯薄/鎶借薄" },
+      { k: "time", l: "鏃堕棿鎰?, sl: "鍘嬬缉/寤剁紦" },
+      { k: "honesty", l: "璇氬疄搴?, sl: "鍧﹂湶/琛ㄦ紨" },
+      { k: "culture", l: "鏂囧寲灞?, sl: "浼犵粺/鏂" }
     ];
 
     return keys.map((item) => ({
@@ -1340,28 +1340,28 @@ export default function App() {
 
   const getInteractiveRadarData = () => {
     return [
-      { label: "温度", subLabel: "冷冽 / 炽烈", value: interactiveScores.temperature },
-      { label: "密度", subLabel: "疏朗 / 密植", value: interactiveScores.density },
-      { label: "透明度", subLabel: "直白 / 幽深", value: interactiveScores.transparency },
-      { label: "余韵", subLabel: "即散 / 沉淀", value: interactiveScores.lingering },
-      { label: "张力", subLabel: "松弛 / 紧绷", value: interactiveScores.tension },
-      { label: "意象域", subLabel: "具象 / 抽象", value: interactiveScores.imagery },
-      { label: "时间感", subLabel: "压缩 / 延缓", value: interactiveScores.time },
-      { label: "诚实度", subLabel: "坦露 / 表演", value: interactiveScores.honesty },
-      { label: "文化层", subLabel: "传统 / 断裂", value: interactiveScores.culture }
+      { label: "娓╁害", subLabel: "鍐峰喗 / 鐐界儓", value: interactiveScores.temperature },
+      { label: "瀵嗗害", subLabel: "鐤忔湕 / 瀵嗘", value: interactiveScores.density },
+      { label: "閫忔槑搴?, subLabel: "鐩寸櫧 / 骞芥繁", value: interactiveScores.transparency },
+      { label: "浣欓煹", subLabel: "鍗虫暎 / 娌夋穩", value: interactiveScores.lingering },
+      { label: "寮犲姏", subLabel: "鏉惧紱 / 绱х环", value: interactiveScores.tension },
+      { label: "鎰忚薄鍩?, subLabel: "鍏疯薄 / 鎶借薄", value: interactiveScores.imagery },
+      { label: "鏃堕棿鎰?, subLabel: "鍘嬬缉 / 寤剁紦", value: interactiveScores.time },
+      { label: "璇氬疄搴?, subLabel: "鍧﹂湶 / 琛ㄦ紨", value: interactiveScores.honesty },
+      { label: "鏂囧寲灞?, subLabel: "浼犵粺 / 鏂", value: interactiveScores.culture }
     ];
   };
 
   // Dynamic visual background helpers for lingering flavors
   const getFlavorBgClass = (type: string) => {
     switch (type) {
-      case "回甘":
+      case "鍥炵敇":
         return "flavor-bg-echo";
-      case "苦涩":
+      case "鑻︽订":
         return "flavor-bg-bitter";
-      case "清冽":
+      case "娓呭喗":
         return "flavor-bg-crisp";
-      case "烟熏":
+      case "鐑熺啅":
         return "flavor-bg-smoky";
       default:
         return "flavor-bg-echo";
@@ -1370,13 +1370,13 @@ export default function App() {
 
   const getFlavorAccentColor = (type: string) => {
     switch (type) {
-      case "回甘":
+      case "鍥炵敇":
         return "text-[#2C2C2B] border-[#8C927F]/30 bg-[#F5EBE0]";
-      case "苦涩":
+      case "鑻︽订":
         return "text-[#2C2C2B] border-[#8C927F]/30 bg-[#E6EBE0]";
-      case "清冽":
+      case "娓呭喗":
         return "text-[#2C2C2B] border-[#2C2C2B]/20 bg-[#D8E2DC]";
-      case "烟熏":
+      case "鐑熺啅":
         return "text-[#2C2C2B] border-[#2C2C2B]/30 bg-[#ECEAEB]";
       default:
         return "text-[#2C2C2B] border-[#8C927F]/30 bg-[#F5EBE0]";
@@ -1390,7 +1390,7 @@ export default function App() {
       <header className="max-w-7xl mx-auto px-6 pt-12 md:pt-16 pb-6 text-center overflow-visible">
         <div className="flex justify-end items-baseline mb-12 border-b border-[#2C2C2B]/10 pb-4">
           <nav className="flex gap-8 text-[10px] tracking-[0.1em] uppercase font-bold text-[#2C2C2B]/70 font-sans">
-            <button onClick={() => setArchiveOpen(true)} className="hover:text-[#8C927F] transition-colors cursor-pointer">Archives 档案馆</button>
+            <button onClick={() => setArchiveOpen(true)} className="hover:text-[#8C927F] transition-colors cursor-pointer">Archives 妗ｆ棣?/button>
           </nav>
         </div>
 
@@ -1404,16 +1404,16 @@ export default function App() {
         </div>
 
         <h1 className="font-serif text-4xl md:text-5.5xl font-light tracking-tight text-[#2C2C2B] leading-[1.1] transition-all duration-300">
-          九维·余韵
-          <span className="block text-xl md:text-2xl mt-2 font-normal italic font-serif text-[#2C2C2B]/70">Nine-dimensional Afterglow • 文字审美模型</span>
+          涔濈淮路浣欓煹
+          <span className="block text-xl md:text-2xl mt-2 font-normal italic font-serif text-[#2C2C2B]/70">Nine-dimensional Afterglow 鈥?鏂囧瓧瀹＄編妯″瀷</span>
         </h1>
         <div className="w-12 h-[1px] bg-[#8C927F]/35 mx-auto mt-6" />
 
         {/* Elegant Sub-ribbon inspired by vintage journals */}
         <div className="mt-6 border-t border-b border-[#2C2C2B]/10 py-3 flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs font-serif italic text-[#2C2C2B]/75">
-          <span>“有些味觉在喉间徘徊，如同远山未消的积雪，清冷而悠长。”</span>
+          <span>鈥滄湁浜涘懗瑙夊湪鍠夐棿寰樺緤锛屽鍚岃繙灞辨湭娑堢殑绉洩锛屾竻鍐疯€屾偁闀裤€傗€?/span>
           <span className="hidden sm:inline">|</span>
-          <span>“深意总迟解，将爱却晚秋”</span>
+          <span>鈥滄繁鎰忔€昏繜瑙ｏ紝灏嗙埍鍗存櫄绉嬧€?/span>
         </div>
       </header>
 
@@ -1432,7 +1432,7 @@ export default function App() {
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 stroke-[1.5]" />
-              <span className="font-serif">A · 品鉴分析</span>
+              <span className="font-serif">A 路 鍝侀壌鍒嗘瀽</span>
             </button>
             
             <button
@@ -1444,7 +1444,7 @@ export default function App() {
               }`}
             >
               <ArrowRightLeft className="w-3.5 h-3.5 stroke-[1.5]" />
-              <span className="font-serif">B · 对比品鉴</span>
+              <span className="font-serif">B 路 瀵规瘮鍝侀壌</span>
             </button>
 
             <button
@@ -1456,7 +1456,7 @@ export default function App() {
               }`}
             >
               <PenTool className="w-3.5 h-3.5 stroke-[1.5]" />
-              <span className="font-serif">C · 写作诊断</span>
+              <span className="font-serif">C 路 鍐欎綔璇婃柇</span>
             </button>
 
             <button
@@ -1468,7 +1468,7 @@ export default function App() {
               }`}
             >
               <Sliders className="w-3.5 h-3.5 stroke-[1.5]" />
-              <span className="font-serif">D · 风格定位</span>
+              <span className="font-serif">D 路 椋庢牸瀹氫綅</span>
             </button>
 
             <button
@@ -1480,7 +1480,7 @@ export default function App() {
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 stroke-[1.5]" />
-              <span className="font-serif">E · 自由探索</span>
+              <span className="font-serif">E 路 鑷敱鎺㈢储</span>
             </button>
           </div>
 
@@ -1491,7 +1491,7 @@ export default function App() {
             className="w-full lg:w-auto py-2 px-4 rounded-md text-xs tracking-wider transition-all duration-300 flex items-center justify-center gap-2 text-[#8C927F] hover:bg-white/60 font-serif font-semibold"
           >
             <Bookmark className="w-3.5 h-3.5" />
-            我的书卷档案馆 ({bookmarks.length})
+            鎴戠殑涔﹀嵎妗ｆ棣?({bookmarks.length})
           </button>
         </div>
 
@@ -1505,7 +1505,7 @@ export default function App() {
               className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#2C2C2B]/95 text-white text-xs px-4 py-2 rounded-full border border-[#2C2C2B] shadow-lg flex items-center gap-2 font-serif font-light tracking-wide backdrop-blur-xs"
             >
               <RefreshCw className="w-3 h-3 animate-spin stroke-[2] text-[#8C927F]" />
-              正在为您研磨墨色，研析风味中...
+              姝ｅ湪涓烘偍鐮旂（澧ㄨ壊锛岀爺鏋愰鍛充腑...
             </motion.div>
           )}
         </AnimatePresence>
@@ -1519,7 +1519,7 @@ export default function App() {
         {/* Main Work desk workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* TAB A: 品鉴分析 */}
+          {/* TAB A: 鍝侀壌鍒嗘瀽 */}
           {activeTab === "A" && (
             <div
               ref={analysisReport ? tabAReportRef : null}
@@ -1532,15 +1532,15 @@ export default function App() {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-serif text-sm font-medium flex items-center gap-2 text-[#2C2C2B]">
                       <Bookmark className="w-4 h-4 text-[#8C927F]" />
-                      送检词章书卷
+                      閫佹璇嶇珷涔﹀嵎
                     </h3>
-                    <span className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase">Mode A · Sample Analyzer</span>
+                    <span className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase">Mode A 路 Sample Analyzer</span>
                   </div>
 
                   <textarea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="请输入你想分析的文字，或点击下方示例填入后手动开始分析..."
+                    placeholder="璇疯緭鍏ヤ綘鎯冲垎鏋愮殑鏂囧瓧锛屾垨鐐瑰嚮涓嬫柟绀轰緥濉叆鍚庢墜鍔ㄥ紑濮嬪垎鏋?.."
                     className="w-full h-56 p-4 rounded-xl border border-[#2C2C2B]/10 bg-[#F9F8F3]/70 text-xs tracking-wide focus:outline-hidden focus:ring-1 focus:ring-[#8C927F]/40 placeholder-[#2C2C2B]/30 font-serif leading-relaxed transition-all resize-none text-[#2C2C2B]"
                   />
 
@@ -1550,7 +1550,7 @@ export default function App() {
                       className="text-[10px] font-serif font-light text-[#2C2C2B]/50 hover:text-[#2C2C2B] flex items-center gap-1 transition-all"
                     >
                       <RotateCcw className="w-3 h-3 text-[#2C2C2B]/40" />
-                      清空纸卷
+                      娓呯┖绾稿嵎
                     </button>
                     
                     <button
@@ -1559,7 +1559,7 @@ export default function App() {
                       className="px-6 py-2.5 rounded-lg bg-[#2C2C2B] hover:bg-[#4d483e] text-[#FDFCF8] font-serif text-xs tracking-widest disabled:opacity-30 transition-all shadow-xs flex items-center gap-2 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      送呈品鉴
+                      閫佸憟鍝侀壌
                     </button>
                   </div>
                 </div>
@@ -1568,7 +1568,7 @@ export default function App() {
                 <div className="export-ignore bg-[#F9F8F3]/60 p-5 rounded-2xl border border-[#2C2C2B]/10 shadow-xs">
                   <h4 className="font-serif text-xs font-medium mb-3 text-[#2C2C2B]/85 flex items-center gap-1.5">
                     <Compass className="w-3.5 h-3.5 text-[#8C927F]" />
-                    引入经典审美样稿
+                    寮曞叆缁忓吀瀹＄編鏍风
                   </h4>
                   <div className="grid grid-cols-2 gap-2">
                     {PRESET_SAMPLES.map((preset, index) => (
@@ -1595,7 +1595,7 @@ export default function App() {
                   >
                     <div>
                       <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">
-                        学说极谱图
+                        瀛﹁鏋佽氨鍥?
                       </h3>
                       <p className="font-mono text-[8px] text-center text-[#2C2C2B]/40 uppercase tracking-widest mb-4">
                         Aesthetics Axis Projections
@@ -1603,7 +1603,7 @@ export default function App() {
                     </div>
                     <RadarChart data={mapScoresToRadar(analysisReport.scores)} colorA="#2C2C2B" />
                     <p className="font-sans text-[9px] text-[#2C2C2B]/40 text-center italic mt-4 leading-relaxed">
-                      * 极谱数据由文字审美模型测绘生成
+                      * 鏋佽氨鏁版嵁鐢辨枃瀛楀缇庢ā鍨嬫祴缁樼敓鎴?
                     </p>
                   </div>
                 )}
@@ -1624,12 +1624,12 @@ export default function App() {
                           {/* Left Block: Golden Radar */}
                           <div className="hidden md:col-span-12 lg:col-span-6 bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between">
                             <div>
-                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">学说极谱图</h3>
+                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">瀛﹁鏋佽氨鍥?/h3>
                               <p className="font-mono text-[8px] text-center text-[#2C2C2B]/40 uppercase tracking-widest mb-4">Aesthetics Axis Projections</p>
                             </div>
                             <RadarChart data={mapScoresToRadar(analysisReport.scores)} colorA="#2C2C2B" />
                             <p className="font-sans text-[9px] text-[#2C2C2B]/40 text-center italic mt-4 leading-relaxed">
-                              * 极谱数据由文字审美模型测绘绘制
+                              * 鏋佽氨鏁版嵁鐢辨枃瀛楀缇庢ā鍨嬫祴缁樼粯鍒?
                             </p>
                           </div>
 
@@ -1645,7 +1645,7 @@ export default function App() {
                               <div className="flex items-center justify-between gap-4 mb-5">
                                 <div className="flex items-center justify-between gap-4 flex-1 min-w-0">
                                   <span className="font-mono text-[9px] leading-none tracking-[0.28em] text-[#2C2C2B]/45 uppercase block">
-                                  总体余韵定性 · Lingering Style
+                                  鎬讳綋浣欓煹瀹氭€?路 Lingering Style
                                 </span>
                                   <span ref={tabAFlavorBadgeRef} className={`inline-flex shrink-0 h-9 min-w-[84px] items-center justify-center self-center px-5 rounded-full border text-[11px] leading-none tracking-[0.18em] font-serif font-medium whitespace-nowrap align-middle bg-white/92 ml-auto ${getFlavorBadgeColor(analysisReport.lingeringType)}`}>
                                     {analysisReport.lingeringType}
@@ -1656,22 +1656,22 @@ export default function App() {
                                     onClick={() => handleExportReportAsImageSafe("A")}
                                     disabled={exportingA}
                                     className="export-ignore px-3 py-1.5 bg-white/78 hover:bg-white text-[#2C2C2B] rounded-xl border border-[#2C2C2B]/10 text-[10px] font-serif transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
-                                    title="导出为精美审美分析画卷长图"
+                                    title="瀵煎嚭涓虹簿缇庡缇庡垎鏋愮敾鍗烽暱鍥?
                                   >
                                     {exportingA ? (
                                       <RefreshCw className="w-3 h-3 text-[#8C927F] animate-spin" />
                                     ) : (
                                       <Download className="w-3 h-3 text-[#8C927F]" />
                                     )}
-                                    <span>{exportingA ? "导出中..." : "导出为长图"}</span>
+                                    <span>{exportingA ? "瀵煎嚭涓?.." : "瀵煎嚭涓洪暱鍥?}</span>
                                   </button>
                                   <button
                                     onClick={() => saveBookmark("A")}
                                     className="export-ignore px-3 py-1.5 bg-white/58 hover:bg-white/75 text-[#2C2C2B] rounded-xl border border-[#2C2C2B]/10 text-[10px] font-serif transition-colors flex items-center gap-1.5 cursor-pointer"
-                                    title="收录此卷书札"
+                                    title="鏀跺綍姝ゅ嵎涔︽湱"
                                   >
                                     <Bookmark className="w-3 h-3 text-[#8C927F]" />
-                                    <span>收录书卷</span>
+                                    <span>鏀跺綍涔﹀嵎</span>
                                   </button>
                                   <span className={`px-2.5 py-0.5 rounded-full border text-[10px] tracking-widest font-serif font-light bg-white/68 ${getFlavorAccentColor(analysisReport.lingeringType)}`}>
                                     {analysisReport.lingeringType}
@@ -1680,7 +1680,7 @@ export default function App() {
                               </div>
 
                               <div className="mb-4 rounded-2xl bg-white/34 border border-white/45 px-4 py-3">
-                                <span className="font-serif text-xs font-light text-[#2C2C2B]/60 leading-none">风味批注</span>
+                                <span className="font-serif text-xs font-light text-[#2C2C2B]/60 leading-none">椋庡懗鎵规敞</span>
                                 <div className="flex flex-wrap gap-2 mt-2.5">
                                   {analysisReport.tags.map((tag, i) => (
                                     <span key={i} data-export-style="tag-chip" className="inline-flex h-9 items-center justify-center px-4 bg-white/72 text-[#2C2C2B] text-[11px] leading-none tracking-[0.04em] font-serif rounded-full border border-[#2C2C2B]/10 shadow-[0_4px_12px_rgba(44,44,43,0.04)] whitespace-nowrap align-middle">
@@ -1704,14 +1704,14 @@ export default function App() {
                                   ) : (
                                     <Download className="w-3 h-3 text-[#8C927F]" />
                                   )}
-                                  <span>{exportingA ? "导出中..." : "导出为长图"}</span>
+                                  <span>{exportingA ? "瀵煎嚭涓?.." : "瀵煎嚭涓洪暱鍥?}</span>
                                 </button>
                                 <button
                                   onClick={() => saveBookmark("A")}
                                   className="h-9 px-3 bg-white/58 hover:bg-white/75 text-[#2C2C2B] rounded-xl border border-[#2C2C2B]/10 text-[10px] font-serif transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                                 >
                                   <Bookmark className="w-3 h-3 text-[#8C927F]" />
-                                  <span>收录书卷</span>
+                                  <span>鏀跺綍涔﹀嵎</span>
                                 </button>
                               </div>
                             </div>
@@ -1719,7 +1719,7 @@ export default function App() {
                             {/* Detailed breakdown per dimension tab lists */}
                             <div className="bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs space-y-4">
                               <h3 className="font-serif text-xs font-medium text-[#2C2C2B]/80 tracking-widest uppercase border-b border-[#2C2C2B]/10 pb-2">
-                                维度详细解析 · Dimension Deep-dives
+                                缁村害璇︾粏瑙ｆ瀽 路 Dimension Deep-dives
                               </h3>
                               <div className="space-y-3">
                                 {getDimensionDetailGroups(analysisReport).map((group) => {
@@ -1740,7 +1740,7 @@ export default function App() {
                                           </p>
                                         </div>
                                         <span className="font-sans text-[10px] text-[#2C2C2B]/55 shrink-0">
-                                          {expanded ? "收起" : "展开"}
+                                          {expanded ? "鏀惰捣" : "灞曞紑"}
                                         </span>
                                       </button>
 
@@ -1764,7 +1764,7 @@ export default function App() {
                                                 style={{ backgroundColor: dimension.accent }}
                                               />
                                               <span>
-                                                {dimension.label}（{dimension.score.value}%）
+                                                {dimension.label}锛坽dimension.score.value}%锛?
                                               </span>
                                             </span>
                                             <p className="mt-1.5 font-sans text-[11px] font-light text-[#2C2C2B]/75 pl-3 leading-relaxed">
@@ -1782,7 +1782,7 @@ export default function App() {
                                 <div>
                                   <span className="font-medium inline-flex items-center gap-1.5 text-xs text-[#2C2C2B]">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#8C927F]" />
-                                    诚实气质与叙事姿态 (诚实度 {analysisReport.scores.honesty.value}%)
+                                    璇氬疄姘旇川涓庡彊浜嬪Э鎬?(璇氬疄搴?{analysisReport.scores.honesty.value}%)
                                   </span>
                                   <p className="mt-1 font-sans text-[11px] font-light text-[#2C2C2B]/75 pl-3">
                                     {analysisReport.details.honestyAnalysis}
@@ -1792,7 +1792,7 @@ export default function App() {
                                 <div className="pt-2 border-t border-[#2C2C2B]/10">
                                   <span className="font-medium inline-flex items-center gap-1.5 text-xs text-[#2C2C2B]">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#E3D5CA]" />
-                                    舌后回甘与回尾沉淀 (余韵 {analysisReport.scores.lingering.value}%)
+                                    鑸屽悗鍥炵敇涓庡洖灏炬矇娣€ (浣欓煹 {analysisReport.scores.lingering.value}%)
                                   </span>
                                   <p className="mt-1 font-sans text-[11px] font-light text-[#2C2C2B]/75 pl-3">
                                     {analysisReport.details.lingeringAnalysis}
@@ -1809,7 +1809,7 @@ export default function App() {
                             <div className="flex items-center justify-between border-b border-[#2C2C2B]/15 pb-2">
                               <h4 className="font-serif text-xs font-medium text-[#2C2C2B] tracking-widest flex items-center gap-2">
                                 <Compass className="w-3.5 h-3.5 text-[#8C927F]" />
-                                文学史独立断案 · Independent Scholar Verdict
+                                鏂囧鍙茬嫭绔嬫柇妗?路 Independent Scholar Verdict
                               </h4>
                               <span className="font-sans text-[8px] text-[#2C2C2B]/40 uppercase tracking-widest">
                                 Literary History Matrix
@@ -1819,7 +1819,7 @@ export default function App() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-serif">
                               <div className="space-y-1.5">
                                 <span className="text-[10px] uppercase font-semibold text-[#2C2C2B]/50 block tracking-wider">
-                                  ▣ 独异风格定性
+                                  鈻?鐙紓椋庢牸瀹氭€?
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light pl-2.5 border-l border-[#8C927F]/30 italic">
                                   {analysisReport.literaryHistoryVerdict.distinctStyle}
@@ -1828,7 +1828,7 @@ export default function App() {
 
                               <div className="space-y-1.5">
                                 <span className="text-[10px] uppercase font-semibold text-emerald-800/75 block tracking-wider">
-                                  ▣ 历史闪光点 / 亮点
+                                  鈻?鍘嗗彶闂厜鐐?/ 浜偣
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light pl-2.5 border-l border-emerald-800/30">
                                   {analysisReport.literaryHistoryVerdict.historicalHighlight}
@@ -1837,7 +1837,7 @@ export default function App() {
 
                               <div className="space-y-1.5">
                                 <span className="text-[10px] uppercase font-semibold text-red-800/75 block tracking-wider">
-                                  ▣ 局限与缺憾 / 主要瑕疵
+                                  鈻?灞€闄愪笌缂烘喚 / 涓昏鐟曠柕
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light pl-2.5 border-l border-red-800/30">
                                   {analysisReport.literaryHistoryVerdict.criticalDefect}
@@ -1851,9 +1851,9 @@ export default function App() {
                   ) : (
                     <div className="h-full min-h-[380px] bg-[#F9F8F3]/60 rounded-2xl border border-dashed border-[#2C2C2B]/20 flex flex-col items-center justify-center p-8 text-center text-[#2C2C2B]/40 font-serif font-light">
                       <Bookmark className="w-10 h-10 stroke-[1.2] opacity-35 mb-3 text-[#8C927F]" />
-                      待您在左侧送入书卷...
+                      寰呮偍鍦ㄥ乏渚ч€佸叆涔﹀嵎...
                       <p className="text-[10px] font-sans text-[#2C2C2B]/35 mt-2">
-                        将基于俄国形式主义与新批评文本细读算法生成精美审美报告
+                        灏嗗熀浜庝縿鍥藉舰寮忎富涔変笌鏂版壒璇勬枃鏈粏璇荤畻娉曠敓鎴愮簿缇庡缇庢姤鍛?
                       </p>
                     </div>
                   )}
@@ -1863,7 +1863,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB B: 对比品鉴 */}
+          {/* TAB B: 瀵规瘮鍝侀壌 */}
           {activeTab === "B" && (
             <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
               
@@ -1873,29 +1873,29 @@ export default function App() {
                   <div className="flex justify-between items-center border-b border-[#2C2C2B]/10 pb-2">
                     <h3 className="font-serif text-sm font-medium flex items-center gap-2 text-[#2C2C2B]">
                       <ArrowRightLeft className="w-4 h-4 text-[#8C927F]" />
-                      同框比对文本
+                      鍚屾姣斿鏂囨湰
                     </h3>
                     <span className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase">Aesthetics Confrontation</span>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block font-serif text-[11px] text-[#2C2C2B]/50 mb-1">文段 A 宣纸稿</label>
+                      <label className="block font-serif text-[11px] text-[#2C2C2B]/50 mb-1">鏂囨 A 瀹ｇ焊绋?/label>
                       <textarea
                         value={textA}
                         onChange={(e) => setTextA(e.target.value)}
                         className="w-full h-32 p-3 rounded-lg border border-[#2C2C2B]/15 bg-[#F9F8F3]/60 text-xs font-serif leading-relaxed focus:outline-hidden focus:ring-1 focus:ring-[#8C927F]/45 text-[#2C2C2B]"
-                        placeholder="请输入文段 A，或点击下方示例填入..."
+                        placeholder="璇疯緭鍏ユ枃娈?A锛屾垨鐐瑰嚮涓嬫柟绀轰緥濉叆..."
                       />
                     </div>
 
                     <div>
-                      <label className="block font-serif text-[11px] text-[#2C2C2B]/50 mb-1">文段 B 宣纸稿</label>
+                      <label className="block font-serif text-[11px] text-[#2C2C2B]/50 mb-1">鏂囨 B 瀹ｇ焊绋?/label>
                       <textarea
                         value={textB}
                         onChange={(e) => setTextB(e.target.value)}
                         className="w-full h-32 p-3 rounded-lg border border-[#2C2C2B]/15 bg-[#F9F8F3]/60 text-xs font-serif leading-relaxed focus:outline-hidden focus:ring-1 focus:ring-[#8C927F]/45 text-[#2C2C2B]"
-                        placeholder="请输入文段 B，或点击下方示例填入..."
+                        placeholder="璇疯緭鍏ユ枃娈?B锛屾垨鐐瑰嚮涓嬫柟绀轰緥濉叆..."
                       />
                     </div>
                   </div>
@@ -1908,7 +1908,7 @@ export default function App() {
                       }}
                       className="text-[10px] font-serif font-light text-[#2C2C2B]/50 hover:text-[#2C2C2B] cursor-pointer"
                     >
-                      清屏空卷
+                      娓呭睆绌哄嵎
                     </button>
                     <button
                       onClick={() => handleAnalyze("B")}
@@ -1916,14 +1916,14 @@ export default function App() {
                       className="px-6 py-2.5 rounded-lg bg-[#2C2C2B] hover:bg-[#4d483e] text-[#FDFCF8] font-serif text-xs tracking-widest disabled:opacity-30 transition-all flex items-center gap-2 cursor-pointer"
                     >
                       <ArrowRightLeft className="w-3.5 h-3.5 text-[#8C927F]" />
-                      开始对照品藻
+                      寮€濮嬪鐓у搧钘?
                     </button>
                   </div>
                 </div>
 
                 {/* Compare Presets */}
                 <div className="bg-[#F9F8F3]/60 p-4 rounded-xl border border-[#2C2C2B]/10 space-y-2">
-                  <span className="font-serif text-[10px] text-[#2C2C2B]/50 uppercase tracking-widest block">对照范例引入:</span>
+                  <span className="font-serif text-[10px] text-[#2C2C2B]/50 uppercase tracking-widest block">瀵圭収鑼冧緥寮曞叆:</span>
                   <div className="space-y-1.5">
                     {PRES_COMPARE_SAMPLES.map((pres, idx) => (
                       <button
@@ -1957,15 +1957,15 @@ export default function App() {
                           {/* Compare Radar */}
                           <div className="md:col-span-12 lg:col-span-6 bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between">
                             <div>
-                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">双子等位极坐标</h3>
+                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">鍙屽瓙绛変綅鏋佸潗鏍?/h3>
                               <p className="font-mono text-[8px] text-center uppercase mb-4 tracking-widest text-[#2C2C2B]/40">A vs B Overlaid Axis</p>
                             </div>
                             <RadarChart
                               data={mapCompareToRadar(compareReport)}
                               colorA="#2C2C2B" // Carbon ink
                               colorB="#8C927F" // Sage tea green
-                              nameA="文段 A"
-                              nameB="文段 B"
+                              nameA="鏂囨 A"
+                              nameB="鏂囨 B"
                             />
                           </div>
 
@@ -1974,26 +1974,26 @@ export default function App() {
                             <div className="p-4 bg-white/70 rounded-xl border border-[#2C2C2B]/10 space-y-3">
                               <h4 className="font-serif text-xs font-medium text-[#2C2C2B] border-b border-[#2C2C2B]/10 pb-1.5 flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#2C2C2B]" />
-                                文段 A 品相简析
+                                鏂囨 A 鍝佺浉绠€鏋?
                               </h4>
                               <p className="font-serif text-xs font-light text-[#2C2C2B]/80 leading-relaxed">
                                 {compareReport.textA.summary}
                               </p>
                               <span className="inline-block text-[9px] font-serif px-2 py-0.5 rounded-sm bg-[#2C2C2B]/5 text-[#2C2C2B]/70 border border-[#2C2C2B]/10">
-                                余韵: {compareReport.textA.lingeringType}
+                                浣欓煹: {compareReport.textA.lingeringType}
                               </span>
                             </div>
 
                             <div className="p-4 bg-white/70 rounded-xl border border-[#2C2C2B]/10 space-y-3">
                               <h4 className="font-serif text-xs font-medium text-[#8C927F] border-b border-[#8C927F]/20 pb-1.5 flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#8C927F]" />
-                                文段 B 品相简析
+                                鏂囨 B 鍝佺浉绠€鏋?
                               </h4>
                               <p className="font-serif text-xs font-light text-[#2C2C2B]/85 leading-relaxed">
                                 {compareReport.textB.summary}
                               </p>
                               <span className="inline-block text-[9px] font-serif px-2 py-0.5 rounded-sm bg-[#8C927F]/5 text-[#8C927F] border border-[#8C927F]/25">
-                                余韵: {compareReport.textB.lingeringType}
+                                浣欓煹: {compareReport.textB.lingeringType}
                               </span>
                             </div>
                           </div>
@@ -2003,7 +2003,7 @@ export default function App() {
                         {/* Dimensions contrast logs table */}
                         <div className="bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs space-y-4">
                           <h3 className="font-serif text-xs font-medium text-[#2C2C2B]/80 uppercase tracking-widest border-b border-[#2C2C2B]/10 pb-2">
-                            显著差异特征对照 · Significant Variations
+                            鏄捐憲宸紓鐗瑰緛瀵圭収 路 Significant Variations
                           </h3>
                           
                           <div className="space-y-4">
@@ -2027,7 +2027,7 @@ export default function App() {
                           <div className="mt-5 p-5 bg-[#8C927F]/10 border border-[#8C927F]/20 rounded-xl relative overflow-visible">
                             <div className="flex justify-between items-center mb-2">
                               <h4 className="font-serif text-xs font-medium text-[#8C927F] leading-none">
-                                美学断案 · Total Verdict
+                                缇庡鏂 路 Total Verdict
                               </h4>
                               <div className="flex gap-2">
                                 <button
@@ -2040,14 +2040,14 @@ export default function App() {
                                   ) : (
                                     <Download className="w-2.5 h-2.5 text-[#8C927F]" />
                                   )}
-                                  <span>{exportingB ? "导出中..." : "导出为长图"}</span>
+                                  <span>{exportingB ? "瀵煎嚭涓?.." : "瀵煎嚭涓洪暱鍥?}</span>
                                 </button>
                                 <button
                                   onClick={() => saveBookmark("B")}
                                   className="px-2 py-1 bg-white hover:bg-[#FDFCF8] text-[#2C2C2B]/90 hover:text-[#2C2C2B] rounded shadow-xs border border-[#8C927F]/30 text-[9px] font-serif transition-colors flex items-center gap-1 cursor-pointer"
                                 >
                                   <Bookmark className="w-2.5 h-2.5 text-[#8C927F]" />
-                                  <span>收录同框对照本</span>
+                                  <span>鏀跺綍鍚屾瀵圭収鏈?/span>
                                 </button>
                               </div>
                             </div>
@@ -2063,7 +2063,7 @@ export default function App() {
                             <div className="flex items-center justify-between border-b border-[#2C2C2B]/15 pb-2">
                               <h4 className="font-serif text-xs font-medium text-[#2C2C2B] tracking-widest flex items-center gap-2">
                                 <Compass className="w-3.5 h-3.5 text-[#8C927F]" />
-                                文学史独立比对断案 · Independent Comparative Verdict
+                                鏂囧鍙茬嫭绔嬫瘮瀵规柇妗?路 Independent Comparative Verdict
                               </h4>
                               <span className="font-sans text-[8px] text-[#2C2C2B]/40 uppercase tracking-widest">
                                 Comparative Literary History
@@ -2073,7 +2073,7 @@ export default function App() {
                             <div className="space-y-4 font-serif">
                               <div className="space-y-1">
                                 <span className="text-[10px] uppercase font-semibold text-[#2C2C2B]/50 block tracking-wider">
-                                  ▣ 文段 A 的文学流派宿命与优劣审视
+                                  鈻?鏂囨 A 鐨勬枃瀛︽祦娲惧鍛戒笌浼樺姡瀹¤
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/80 leading-relaxed font-light pl-2.5 border-l border-[#2C2C2B]/30">
                                   {compareReport.literaryHistoryVerdict.textAHistory}
@@ -2082,7 +2082,7 @@ export default function App() {
 
                               <div className="space-y-1 pt-2 border-t border-[#2C2C2B]/5">
                                 <span className="text-[10px] uppercase font-semibold text-[#8C927F] block tracking-wider">
-                                  ▣ 文段 B 的文学流派宿命与优劣审视
+                                  鈻?鏂囨 B 鐨勬枃瀛︽祦娲惧鍛戒笌浼樺姡瀹¤
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/80 leading-relaxed font-light pl-2.5 border-l border-[#8C927F]/30">
                                   {compareReport.literaryHistoryVerdict.textBHistory}
@@ -2091,7 +2091,7 @@ export default function App() {
 
                               <div className="space-y-1 pt-2 border-t border-[#2C2C2B]/5 bg-[#8C927F]/5 p-3 rounded-lg border border-[#8C927F]/10">
                                 <span className="text-[10px] uppercase font-semibold text-[#2C2C2B] block tracking-wider">
-                                  ⌗ 风格史对照意义与得失结案
+                                  鈱?椋庢牸鍙插鐓ф剰涔変笌寰楀け缁撴
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light mt-1 text-justify">
                                   {compareReport.literaryHistoryVerdict.comparativeSignificance}
@@ -2106,9 +2106,9 @@ export default function App() {
                   ) : (
                     <div className="h-full min-h-[380px] bg-[#F9F8F3]/60 rounded-2xl border border-dashed border-[#2C2C2B]/20 flex flex-col items-center justify-center p-8 text-center text-[#2C2C2B]/40 font-serif font-light">
                       <ArrowRightLeft className="w-10 h-10 stroke-[1.2] opacity-35 mb-3 text-[#8C927F]" />
-                      待您在左侧添置比对照书卷...
+                      寰呮偍鍦ㄥ乏渚ф坊缃瘮瀵圭収涔﹀嵎...
                       <p className="text-[10px] font-sans text-[#2C2C2B]/35 mt-2">
-                        同框渲染双重多边形叠合投影，一目了然判明文心幽胜
+                        鍚屾娓叉煋鍙岄噸澶氳竟褰㈠彔鍚堟姇褰憋紝涓€鐩簡鐒跺垽鏄庢枃蹇冨菇鑳?
                       </p>
                     </div>
                   )}
@@ -2118,7 +2118,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB C: 写作诊断 */}
+          {/* TAB C: 鍐欎綔璇婃柇 */}
           {activeTab === "C" && (
             <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
               
@@ -2128,20 +2128,20 @@ export default function App() {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-serif text-sm font-medium flex items-center gap-2 text-[#2C2C2B]">
                       <PenTool className="w-4 h-4 text-[#8C927F]" />
-                      呈交个人创稿
+                      鍛堜氦涓汉鍒涚
                     </h3>
-                    <span className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase">Mode C · Writers Diagnosis</span>
+                    <span className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase">Mode C 路 Writers Diagnosis</span>
                   </div>
 
                   <p className="font-serif text-[11px] text-[#2C2C2B]/50 leading-relaxed mb-3 font-light">
-                    请在此输入你手写的文字，我们将严苛地审查是否存在“伪造的眼泪”、或是否有“空洞的文理堆砌”，并提出有针对性的修改润色方案。
+                    璇峰湪姝よ緭鍏ヤ綘鎵嬪啓鐨勬枃瀛楋紝鎴戜滑灏嗕弗鑻涘湴瀹℃煡鏄惁瀛樺湪鈥滀吉閫犵殑鐪兼唱鈥濄€佹垨鏄惁鏈夆€滅┖娲炵殑鏂囩悊鍫嗙爩鈥濓紝骞舵彁鍑烘湁閽堝鎬х殑淇敼娑﹁壊鏂规銆?
                   </p>
 
                   <textarea
                     value={diagnoseText}
                     onChange={(e) => setDiagnoseText(e.target.value)}
                     className="w-full h-56 p-4 rounded-xl border border-[#2C2C2B]/10 bg-[#F9F8F3]/60 text-xs font-serif leading-relaxed focus:outline-hidden focus:ring-1 focus:ring-[#8C927F]/45 text-[#2C2C2B]"
-                    placeholder="请输入你的原创文字，准备好后再开始诊断..."
+                    placeholder="璇疯緭鍏ヤ綘鐨勫師鍒涙枃瀛楋紝鍑嗗濂藉悗鍐嶅紑濮嬭瘖鏂?.."
                   />
 
                   <div className="flex justify-between items-center mt-4">
@@ -2149,7 +2149,7 @@ export default function App() {
                       onClick={() => setDiagnoseText("")}
                       className="text-[10px] font-serif font-light text-[#2C2C2B]/50 hover:text-[#2C2C2B] cursor-pointer"
                     >
-                      废纸篓
+                      搴熺焊绡?
                     </button>
                     <button
                       onClick={() => handleAnalyze("C")}
@@ -2157,7 +2157,7 @@ export default function App() {
                       className="px-6 py-2.5 rounded-lg bg-[#2C2C2B] hover:bg-[#4d483e] text-[#FDFCF8] font-serif text-xs tracking-widest disabled:opacity-30 transition-all flex items-center gap-2 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      开始文字会诊
+                      寮€濮嬫枃瀛椾細璇?
                     </button>
                   </div>
                 </div>
@@ -2178,13 +2178,13 @@ export default function App() {
                           {/* Left: Axis Projections */}
                           <div className="md:col-span-12 lg:col-span-6 bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between">
                             <div>
-                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">自审美学轴系</h3>
+                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">鑷缇庡杞寸郴</h3>
                               <p className="font-mono text-[8px] text-center text-[#2C2C2B]/40 uppercase tracking-widest mb-4">Diagnosis Axis</p>
                             </div>
                             <RadarChart data={mapScoresToRadar(diagnosisReport.scores)} colorA="#2C2C2B" />
                             <div className="text-center mt-3">
                               <span className="text-[10px] font-serif text-[#2C2C2B]/80 bg-[#E3D5CA]/40 px-2 py-0.5 rounded-sm border border-[#E3D5CA]/60">
-                                表演性质: {diagnosisReport.scores.honesty.value}% (越低越诚实)
+                                琛ㄦ紨鎬ц川: {diagnosisReport.scores.honesty.value}% (瓒婁綆瓒婅瘹瀹?
                               </span>
                             </div>
                           </div>
@@ -2195,7 +2195,7 @@ export default function App() {
                             {/* Lingering feedback */}
                             <div className={`p-5 rounded-2xl ${getFlavorBgClass(diagnosisReport.lingeringType)} relative`}>
                               <div className="flex justify-between items-center mb-2">
-                                <h4 className="font-mono text-[9px] text-[#2C2C2B]/50 uppercase tracking-wider">余韵检测 & 质地结论</h4>
+                                <h4 className="font-mono text-[9px] text-[#2C2C2B]/50 uppercase tracking-wider">浣欓煹妫€娴?& 璐ㄥ湴缁撹</h4>
                                 <button
                                   onClick={() => handleExportReportAsImageSafe("C")}
                                   disabled={exportingC}
@@ -2206,11 +2206,11 @@ export default function App() {
                                   ) : (
                                     <Download className="w-2.5 h-2.5 text-[#8C927F]" />
                                   )}
-                                  <span>{exportingC ? "导出中..." : "导出为长图"}</span>
+                                  <span>{exportingC ? "瀵煎嚭涓?.." : "瀵煎嚭涓洪暱鍥?}</span>
                                 </button>
                               </div>
                               <span className={`px-2.5 py-0.5 rounded-full border text-[9px] tracking-widest font-serif font-light mb-3 inline-block ${getFlavorAccentColor(diagnosisReport.lingeringType)}`}>
-                                余韵: {diagnosisReport.lingeringType}
+                                浣欓煹: {diagnosisReport.lingeringType}
                               </span>
                               <p className="font-serif text-xs font-light text-[#2C2C2B]/85 leading-relaxed">
                                 {diagnosisReport.summary}
@@ -2221,14 +2221,14 @@ export default function App() {
                             {diagnosisReport.suggestions && diagnosisReport.suggestions.length > 0 && (
                               <div className="space-y-4">
                                 <h3 className="font-serif text-xs font-medium text-[#2C2C2B]/70 uppercase tracking-widest">
-                                  美学医生改写构想 · Interactive Rewrites
+                                  缇庡鍖荤敓鏀瑰啓鏋勬兂 路 Interactive Rewrites
                                 </h3>
 
                                 {diagnosisReport.suggestions.map((sug, i) => (
                                   <div key={i} className="p-5 bg-white rounded-xl border border-[#2C2C2B]/10 space-y-2.5 shadow-xs">
                                     <h4 className="font-serif text-xs font-medium text-[#8C927F] flex items-center gap-1.5">
                                       <CornerDownRight className="w-3.5 h-3.5" />
-                                      方案 {i + 1}：{sug.title}
+                                      鏂规 {i + 1}锛歿sug.title}
                                     </h4>
                                     <p className="font-sans text-[11px] font-light text-[#2C2C2B]/70 leading-relaxed font-light">
                                       {sug.text}
@@ -2236,7 +2236,7 @@ export default function App() {
                                     
                                     <div className="mt-3 bg-[#F9F8F3] border border-[#2C2C2B]/5 p-3 rounded-md font-serif text-[11px] leading-relaxed italic text-[#2C2C2B]/80">
                                       <strong className="not-italic font-sans text-[9px] text-[#2C2C2B]/40 uppercase block mb-1">
-                                        对照对比演示 · Comparison Demo:
+                                        瀵圭収瀵规瘮婕旂ず 路 Comparison Demo:
                                       </strong>
                                       {sug.example}
                                     </div>
@@ -2246,7 +2246,7 @@ export default function App() {
                             )}
 
                             <div className="bg-white/50 p-5 rounded-xl border border-[#2C2C2B]/10">
-                              <h4 className="font-serif text-xs font-medium text-[#2C2C2B]/80 mb-2">诚实度细节会诊意见</h4>
+                              <h4 className="font-serif text-xs font-medium text-[#2C2C2B]/80 mb-2">璇氬疄搴︾粏鑺備細璇婃剰瑙?/h4>
                               <p className="font-sans text-[11px] font-light text-[#2C2C2B]/70 leading-relaxed font-light">
                                 {diagnosisReport.details.honestyAnalysis}
                               </p>
@@ -2261,7 +2261,7 @@ export default function App() {
                             <div className="flex items-center justify-between border-b border-[#2C2C2B]/15 pb-2">
                               <h4 className="font-serif text-xs font-medium text-[#2C2C2B] tracking-widest flex items-center gap-2">
                                 <Compass className="w-3.5 h-3.5 text-[#8C927F]" />
-                                文学史独立会诊定案 · Scholar Quality Verdict
+                                鏂囧鍙茬嫭绔嬩細璇婂畾妗?路 Scholar Quality Verdict
                               </h4>
                               <span className="font-sans text-[8px] text-[#2C2C2B]/40 uppercase tracking-widest">
                                 Author Diagnosis Verdict
@@ -2271,7 +2271,7 @@ export default function App() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-serif">
                               <div className="space-y-1.5">
                                 <span className="text-[10px] uppercase font-semibold text-[#2C2C2B]/50 block tracking-wider">
-                                  ▣ 独异风格定性
+                                  鈻?鐙紓椋庢牸瀹氭€?
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light pl-2.5 border-l border-[#8C927F]/30 italic">
                                   {diagnosisReport.literaryHistoryVerdict.distinctStyle}
@@ -2280,7 +2280,7 @@ export default function App() {
 
                               <div className="space-y-1.5">
                                 <span className="text-[10px] uppercase font-semibold text-emerald-800/75 block tracking-wider">
-                                  ▣ 历史闪光点 / 亮点
+                                  鈻?鍘嗗彶闂厜鐐?/ 浜偣
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light pl-2.5 border-l border-emerald-800/30">
                                   {diagnosisReport.literaryHistoryVerdict.historicalHighlight}
@@ -2289,7 +2289,7 @@ export default function App() {
 
                               <div className="space-y-1.5">
                                 <span className="text-[10px] uppercase font-semibold text-red-800/75 block tracking-wider">
-                                  ▣ 局限与缺憾 / 主要瑕疵
+                                  鈻?灞€闄愪笌缂烘喚 / 涓昏鐟曠柕
                                 </span>
                                 <p className="text-[11px] text-[#2C2C2B]/85 leading-relaxed font-light pl-2.5 border-l border-red-800/30">
                                   {diagnosisReport.literaryHistoryVerdict.criticalDefect}
@@ -2303,9 +2303,9 @@ export default function App() {
                   ) : (
                     <div className="h-full min-h-[380px] bg-[#F9F8F3]/60 rounded-2xl border border-dashed border-[#2C2C2B]/20 flex flex-col items-center justify-center p-8 text-center text-[#2C2C2B]/40 font-serif font-light">
                       <PenTool className="w-10 h-10 stroke-[1.2] opacity-35 mb-3 text-[#8C927F]" />
-                      待您在左侧呈上创稿宣稿...
+                      寰呮偍鍦ㄥ乏渚у憟涓婂垱绋垮绋?..
                       <p className="text-[10px] font-sans text-[#2C2C2B]/25 mt-2">
-                        我们将剖析您的“心象之诚”，提供极高美学底板启发建议
+                        鎴戜滑灏嗗墫鏋愭偍鐨勨€滃績璞′箣璇氣€濓紝鎻愪緵鏋侀珮缇庡搴曟澘鍚彂寤鸿
                       </p>
                     </div>
                   )}
@@ -2315,7 +2315,7 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB D: 风格定位 (Interactive radar dragging/sliders and school templates) */}
+          {/* TAB D: 椋庢牸瀹氫綅 (Interactive radar dragging/sliders and school templates) */}
           {activeTab === "D" && (
             <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
               
@@ -2325,13 +2325,13 @@ export default function App() {
                   <div className="flex justify-between items-center border-b border-[#2C2C2B]/10 pb-2">
                     <h2 className="font-serif text-sm font-medium flex items-center gap-2 text-[#2C2C2B]">
                       <Sliders className="w-4 h-4 text-[#8C927F]" />
-                      文学文体流派档案
+                      鏂囧鏂囦綋娴佹淳妗ｆ
                     </h2>
                     <span className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase">Pre-compiled Archetypes</span>
                   </div>
 
                   <p className="font-serif text-[11px] text-[#2C2C2B]/50 leading-relaxed">
-                    选择任一经典美学流派，探寻它的九维度投影。您也可以在右侧雷达图上<strong>直接拖拽任意圆点</strong>，来自由调制最契合你写作目标的审美投影！
+                    閫夋嫨浠讳竴缁忓吀缇庡娴佹淳锛屾帰瀵诲畠鐨勪節缁村害鎶曞奖銆傛偍涔熷彲浠ュ湪鍙充晶闆疯揪鍥句笂<strong>鐩存帴鎷栨嫿浠绘剰鍦嗙偣</strong>锛屾潵鑷敱璋冨埗鏈€濂戝悎浣犲啓浣滅洰鏍囩殑瀹＄編鎶曞奖锛?
                   </p>
 
                   <div className="space-y-2.5">
@@ -2360,14 +2360,14 @@ export default function App() {
                 {/* Legend details card */}
                 {selectedVibe && (
                   <div className={`p-6 rounded-2xl ${getFlavorBgClass(selectedVibe.lingeringType)} relative space-y-3`}>
-                    <span className="font-sans text-[8px] text-[#2C2C2B]/40 tracking-widest uppercase block">流派拟示范文 / Standard Prototype</span>
-                    <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]">{selectedVibe.name} 式样句演示：</h4>
+                    <span className="font-sans text-[8px] text-[#2C2C2B]/40 tracking-widest uppercase block">娴佹淳鎷熺ず鑼冩枃 / Standard Prototype</span>
+                    <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]">{selectedVibe.name} 寮忔牱鍙ユ紨绀猴細</h4>
                     <p className="font-serif italic text-xs leading-relaxed text-[#2C2C2B]/80 bg-[#FDFCF8]/50 p-3 rounded-lg border border-[#2C2C2B]/10">
                       {selectedVibe.example}
                     </p>
                     <div className="font-sans text-[10px] text-[#2C2C2B]/50 flex justify-between items-center pt-2 border-t border-[#2C2C2B]/10">
-                      <span>经典参考作系: {selectedVibe.authorRef}</span>
-                      <span>余韵定型: {selectedVibe.lingeringType}</span>
+                      <span>缁忓吀鍙傝€冧綔绯? {selectedVibe.authorRef}</span>
+                      <span>浣欓煹瀹氬瀷: {selectedVibe.lingeringType}</span>
                     </div>
                   </div>
                 )}
@@ -2379,7 +2379,7 @@ export default function App() {
                 {/* Visual Intersect Radar */}
                 <div className="md:col-span-6 flex flex-col items-center">
                   <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">
-                    九维文体罗盘拟态
+                    涔濈淮鏂囦綋缃楃洏鎷熸€?
                   </h3>
                   <p className="font-mono text-[8px] text-[#2C2C2B]/40 uppercase tracking-widest mb-6">Interactive Style Configurator</p>
                   
@@ -2392,26 +2392,26 @@ export default function App() {
 
                   <div className="mt-4 flex items-center gap-1.5 text-[10px] font-serif text-[#2C2C2B]/50 leading-relaxed justify-center text-center">
                     <Info className="w-3.5 h-3.5 stroke-[1.5] text-[#8C927F]" />
-                    <span>在极轴上按鼠标左键/触摸直接拖拽进行微调</span>
+                    <span>鍦ㄦ瀬杞翠笂鎸夐紶鏍囧乏閿?瑙︽懜鐩存帴鎷栨嫿杩涜寰皟</span>
                   </div>
                 </div>
 
                 {/* Numeric sliders columns */}
                 <div className="md:col-span-6 space-y-3">
                   <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 uppercase tracking-widest border-b border-[#2C2C2B]/10 pb-1 mb-3">
-                    轴极分值阻尼
+                    杞存瀬鍒嗗€奸樆灏?
                   </h4>
                   {Object.entries(interactiveScores).map(([key, val]) => {
                     const labelMap: Record<string, string> = {
-                      temperature: "温度 (冷冽-炽烈)",
-                      density: "密度 (轻盈-厚重)",
-                      transparency: "透明度 (澄澈-幽深)",
-                      lingering: "余韵 (清冽-沉淀)",
-                      tension: "张力 (松弛-紧绷)",
-                      imagery: "意象域 (具象-抽象)",
-                      time: "时间感 (压缩-延缓)",
-                      honesty: "表演度 (坦露-表演)",
-                      culture: "文化层 (传统-断裂)"
+                      temperature: "娓╁害 (鍐峰喗-鐐界儓)",
+                      density: "瀵嗗害 (杞荤泩-鍘氶噸)",
+                      transparency: "閫忔槑搴?(婢勬緢-骞芥繁)",
+                      lingering: "浣欓煹 (娓呭喗-娌夋穩)",
+                      tension: "寮犲姏 (鏉惧紱-绱х环)",
+                      imagery: "鎰忚薄鍩?(鍏疯薄-鎶借薄)",
+                      time: "鏃堕棿鎰?(鍘嬬缉-寤剁紦)",
+                      honesty: "琛ㄦ紨搴?(鍧﹂湶-琛ㄦ紨)",
+                      culture: "鏂囧寲灞?(浼犵粺-鏂)"
                     };
                     return (
                       <div key={key} className="space-y-1">
@@ -2442,7 +2442,7 @@ export default function App() {
                       className="w-full py-3 bg-[#2C2C2B] text-[#FDFCF8] rounded-xl text-xs font-serif tracking-widest hover:bg-[#4d483e] transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-[#8C927F]" />
-                      解构当前美学设想之投影
+                      瑙ｆ瀯褰撳墠缇庡璁炬兂涔嬫姇褰?
                     </button>
 
                     {/* Natural language custom evaluation area containing recommendations */}
@@ -2456,7 +2456,7 @@ export default function App() {
                         >
                           <div className="flex justify-between items-baseline border-b border-[#8C927F]/20 pb-2">
                             <span className="font-serif text-xs font-semibold text-[#2C2C2B]">
-                              设定命格：{customEvaluation.styleName}
+                              璁惧畾鍛芥牸锛歿customEvaluation.styleName}
                             </span>
                           </div>
                           <p className="font-serif text-[11px] font-light text-[#2C2C2B]/85 leading-relaxed">
@@ -2464,15 +2464,15 @@ export default function App() {
                           </p>
 
                           <div className="space-y-2">
-                            <span className="font-mono text-[8px] tracking-wider text-[#2C2C2B]/40 uppercase block">推荐参考作者与作品：</span>
+                            <span className="font-mono text-[8px] tracking-wider text-[#2C2C2B]/40 uppercase block">鎺ㄨ崘鍙傝€冧綔鑰呬笌浣滃搧锛?/span>
                             {customEvaluation.recommendations.map((rec, i) => (
                               <div key={i} className="bg-white/70 p-3 rounded-lg border border-[#2C2C2B]/5 space-y-1">
                                 <div className="flex justify-between items-center">
                                   <span className="font-serif text-[11px] font-semibold text-[#2C2C2B]">{rec.author} {rec.work}</span>
-                                  <span className="text-[8px] bg-[#8C927F]/10 text-[#8C927F] px-1 rounded-xs">参考坐标</span>
+                                  <span className="text-[8px] bg-[#8C927F]/10 text-[#8C927F] px-1 rounded-xs">鍙傝€冨潗鏍?/span>
                                 </div>
                                 <p className="font-sans text-[10px] text-[#2C2C2B]/60 leading-relaxed">
-                                  <strong>参考价值：</strong>{rec.value}
+                                  <strong>鍙傝€冧环鍊硷細</strong>{rec.value}
                                 </p>
                               </div>
                             ))}
@@ -2481,16 +2481,16 @@ export default function App() {
                           {/* Subsequent interactive test card */}
                           <div className="border-t border-[#8C927F]/20 pt-4 mt-2 space-y-3">
                             <h5 className="font-serif text-[11px] font-medium text-[#2C2C2B]/95 flex items-center gap-1.5">
-                              落笔印证 · 现场文字分值检校
+                              钀界瑪鍗拌瘉 路 鐜板満鏂囧瓧鍒嗗€兼鏍?
                             </h5>
                             <p className="font-sans text-[10px] font-light text-[#2C2C2B]/50 leading-relaxed">
-                              若您已有一些现成文段或现场拟稿，可在下方输入。我们将利用文字测量机制为您解构其是否吻合上述九维设想。
+                              鑻ユ偍宸叉湁涓€浜涚幇鎴愭枃娈垫垨鐜板満鎷熺锛屽彲鍦ㄤ笅鏂硅緭鍏ャ€傛垜浠皢鍒╃敤鏂囧瓧娴嬮噺鏈哄埗涓烘偍瑙ｆ瀯鍏舵槸鍚﹀惢鍚堜笂杩颁節缁磋鎯炽€?
                             </p>
                             <textarea
                               rows={4}
                               value={customDraftText}
                               onChange={(e) => setCustomDraftText(e.target.value)}
-                              placeholder="在此落笔输入您的书卷段落，检验其与上述设置的契合重合度..."
+                              placeholder="鍦ㄦ钀界瑪杈撳叆鎮ㄧ殑涔﹀嵎娈佃惤锛屾楠屽叾涓庝笂杩拌缃殑濂戝悎閲嶅悎搴?.."
                               className="w-full bg-white border border-[#2C2C2B]/15 rounded-xl p-3 text-xs font-serif tracking-wide focus:outline-hidden focus:ring-1 focus:ring-[#8C927F]/45 text-[#2C2C2B] resize-none"
                             />
                             <div className="flex justify-end">
@@ -2502,12 +2502,12 @@ export default function App() {
                                 {customTesting ? (
                                   <>
                                     <RefreshCw className="w-3 h-3 animate-spin text-[#8C927F]" />
-                                    <span>测算中...</span>
+                                    <span>娴嬬畻涓?..</span>
                                   </>
                                 ) : (
                                   <>
                                     <RefreshCw className="w-3 h-3 text-[#8C927F]" />
-                                    <span>测算匹配度</span>
+                                    <span>娴嬬畻鍖归厤搴?/span>
                                   </>
                                 )}
                               </button>
@@ -2517,9 +2517,9 @@ export default function App() {
                             {customTestResult && (
                               <div className="bg-white/85 border border-[#8C927F]/25 rounded-md p-3 mt-3 space-y-2">
                                 <div className="flex justify-between items-center border-b border-[#2C2C2B]/5 pb-1">
-                                  <span className="font-serif text-[10px] font-medium text-[#2C2C2B]/85">实测重合指标：</span>
+                                  <span className="font-serif text-[10px] font-medium text-[#2C2C2B]/85">瀹炴祴閲嶅悎鎸囨爣锛?/span>
                                   <span className="text-xs font-serif font-bold text-[#8C927F]">
-                                    重合率 {customTestResult.matchScore}%
+                                    閲嶅悎鐜?{customTestResult.matchScore}%
                                   </span>
                                 </div>
                                 <div className="h-1.5 w-full bg-[#2C2C2B]/5 rounded-full overflow-hidden">
@@ -2547,299 +2547,30 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB E: 自由探索 (Chat) */}
+          {/* TAB E: 鑷敱鎺㈢储 (Chat) */}
           {activeTab === "E" && (
-            <div className="lg:col-span-12 max-w-4xl mx-auto w-full animate-fadeIn">
-              <div className="bg-white/80 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col h-[520px] overflow-hidden">
-                
-                {/* Chat header */}
-                <div className="bg-[#F9F8F3] px-6 py-4 border-b border-[#2C2C2B]/10 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-serif text-sm font-medium flex items-center gap-2 text-[#2C2C2B]">
-                      <MessageSquare className="w-4 h-4 text-[#8C927F]" />
-                      文学审美学术对谈
-                    </h3>
-                    <p className="font-sans text-[9px] text-[#2C2C2B]/40 uppercase mt-0.5 tracking-wider">
-                      Dialogue on Russian Formalism & Textual Criticism
-                    </p>
-                  </div>
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#8C927F] animate-pulse" />
-                </div>
-
-                {/* Chat screen logs scrolls */}
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FDFCF8]/40">
-                  {chatMessages.map((msg, index) => (
-                    <div
-                      key={index}
-                      className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl p-4 text-xs leading-relaxed tracking-wide ${
-                          msg.sender === "user"
-                            ? "bg-[#2C2C2B] text-[#FDFCF8] font-serif rounded-tr-xs"
-                            : "bg-white text-[#2C2C2B] font-sans font-light border border-[#2C2C2B]/10 rounded-tl-xs shadow-xs"
-                        }`}
-                        style={{ whiteSpace: "pre-line" }}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Chat input form interface */}
-                <div className="p-4 bg-[#F9F8F3] border-t border-[#2C2C2B]/10 flex gap-3">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleSendMessage(); }}
-                    placeholder="输入或向我提问，例如：“什么是写作的零度？”、“海明威的冰山理论和张爱玲的繁复的区别是什么？”..."
-                    className="flex-1 bg-white border border-[#2C2C2B]/15 rounded-xl px-4 py-2.5 text-xs font-serif tracking-wide focus:outline-hidden focus:ring-1 focus:ring-[#8C927F]/45 text-[#2C2C2B]"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={loading || !chatInput.trim()}
-                    className="bg-[#2C2C2B] hover:bg-[#4d483e] text-[#FDFCF8] text-xs font-serif px-5 py-2.5 rounded-xl tracking-widest transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-30 cursor-pointer"
-                  >
-                    纸鸽送呈
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ChatPanel
+              chatInput={chatInput}
+              chatMessages={chatMessages}
+              chatScrollRef={chatScrollRef}
+              loading={loading}
+              onChatInputChange={setChatInput}
+              onSendMessage={handleSendMessage}
+            />
           )}
 
         </div>
 
-        {/* Dynamic Textbook Bento Box dictionary section below */}
-        <hr className="border-[#2C2C2B]/10 my-16 max-w-4xl mx-auto" />
-
-        <section className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h3 className="font-serif text-lg font-light tracking-[0.15em] text-[#2C2C2B] flex items-center justify-center gap-2">
-              <Compass className="w-4 h-4 text-[#8C927F]" />
-              文字审美模型九极维度说
-            </h3>
-            <p className="font-mono text-[9px] text-[#2C2C2B]/40 tracking-wider uppercase mt-1">
-              Aesthetics Spectrum & Recognition Signals
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ① 温度 · Emotion Temp
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                文字自带的情感体温，它决定了读者与文本之间的心理阻隔屏障。从巴特零度到炽烈红莲的漫长光谱。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "读完觉得重，但找不到一句温吞的情话。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ② 密度 · Info Density
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                单位篇幅内的信息量与意感叠加。排字带有留白多还是意象窒息。决定了读者的认知消化减速比。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "前景化层叠。同一句话，你需要读第二遍。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ③ 透明度 · Significance clarity
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                文字的解码层深。从一目澄明直达人心，到象征层叠的燕卜荪七型美学含混。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "你确信它说了什么，但不保证它只说了这件。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ④ 余韵 · Sensational Echo
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                阅毕合卷后，残留在体内的感知和弦。这是文字最难被模仿和假造的质地。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "读时顺喉，咽后半日仍在口齿留有苦辛。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ⑤ 张力 · Dynamic Tension
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                文本的内在拉拔。叙说与深沉沉默的抗衡、单声道随侍与诸声和弦巴赫金复调的角力。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "结尾处他一言不发，但你听到了万马奔腾。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ⑥ 意象域 · Metaphor Domain
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                在何种质地的物质域中，构建并折射感知体系。什克洛夫斯基的陌生化打破语言自动化。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "用矿物或古老水声的罕见对位建立起感知新大陆。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ⑦ 时间感 · Time Perception
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                文本处理时间流速的双向缩放。是压缩流逝（如‘百年孤独’般的长卷缩骨），还是主观延缓进程（普鲁斯特式的意识精洗）。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "在一个漫长的下午，他把一生的悔恨写进那行只用了三秒完成的签名。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ⑧ 诚实度 · Sincerity Ethos
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                隐含作者的心理安全防备姿态。是安设表演性的自恋修辞，还是回归诚挚直面个人内心最艰难、最原生态的脆弱体验。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "不为了叫好而增设藻饰，哪怕最后捧出的是带血的粗鄙本真。"
-              </div>
-            </div>
-
-            <div className="p-5 bg-white/70 rounded-xl border border-[#2C2C2B]/10 shadow-xs space-y-2">
-              <h4 className="font-serif text-xs font-semibold text-[#2C2C2B]/80 tracking-wide border-b border-[#2C2C2B]/10 pb-1.5">
-                ⑨ 文化层 · Intertextual Depth
-              </h4>
-              <p className="font-sans text-[10px] font-light leading-relaxed text-[#2C2C2B]/60">
-                文本中蕴藏的典故包浆、文本互涉厚度与集体无意识回音的层深度。古典文脉和词谱惯性的潜隐继承度。
-              </p>
-              <div className="text-[9px] font-serif text-[#8C927F] italic pt-1">
-                "每拂拭一圈词章，总会发出远古铜镜或斑驳竹简的干涩回声。"
-              </div>
-            </div>
-
-          </div>
-        </section>
+        <FlavorGlossary />
 
       </main>
 
-      {/* Exquisite Sidebar Drawer for "我的书卷档案馆" */}
-      <AnimatePresence>
-        {archiveOpen && (
-          <>
-            {/* Backdrop overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.35 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setArchiveOpen(false)}
-              className="fixed inset-0 bg-black z-50 cursor-pointer"
-            />
-
-            {/* Sidebar drawer sheet */}
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 180 }}
-              className="fixed top-0 right-0 h-full w-[360px] sm:w-[420px] bg-[#FDFCF8] text-[#2C2C2B] shadow-2xl z-50 flex flex-col border-l border-[#2C2C2B]/15"
-              style={{ fontFamily: "'Georgia', 'Helvetica Neue', Arial, sans-serif" }}
-            >
-              {/* Header */}
-              <div className="p-6 border-b border-[#2C2C2B]/10 flex justify-between items-center bg-[#F9F8F3]">
-                <div>
-                  <h3 className="font-serif text-base font-semibold text-[#2C2C2B] flex items-center gap-2">
-                    <Bookmark className="w-4 h-4 text-[#8C927F]" />
-                    我的书卷档案馆
-                  </h3>
-                  <p className="font-mono text-[9px] text-[#2C2C2B]/40 uppercase tracking-wider mt-0.5">
-                    Nine-dimensional Archives Drawer
-                  </p>
-                </div>
-                <button
-                  onClick={() => setArchiveOpen(false)}
-                  className="p-1 px-2.5 rounded-md hover:bg-[#2C2C2B]/5 text-xs font-serif text-[#2C2C2B]/50 hover:text-[#2C2C2B] transition-colors cursor-pointer"
-                >
-                  关闭
-                </button>
-              </div>
-
-              {/* List body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {bookmarks.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center p-8 text-center text-xs text-[#2C2C2B]/40 font-serif leading-relaxed">
-                    <BookOpen className="w-8 h-8 stroke-[1.2] opacity-30 mb-3 text-[#8C927F]" />
-                    <span>阁中目前空无一卷。</span>
-                    <p className="text-[10px] text-[#2C2C2B]/35 mt-2 max-w-[240px] mx-auto">
-                      您可在「品鉴分析」或「对比品鉴」中点击「收录书卷」或「收录同框对照本」将其永久保存至此处。
-                    </p>
-                  </div>
-                ) : (
-                  bookmarks.map((b) => (
-                    <div
-                      key={b.id}
-                      onClick={() => restoreBookmark(b)}
-                      className="group p-4 bg-white/70 hover:bg-[#8C927F]/5 rounded-xl border border-[#2C2C2B]/10 hover:border-[#8C927F]/45 transition-all cursor-pointer relative shadow-2xs space-y-2 flex flex-col"
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="font-serif text-xs font-semibold tracking-wide text-[#2C2C2B]/85 group-hover:text-[#2C2C2B] leading-snug line-clamp-1 pr-6">
-                          {b.title}
-                        </span>
-                        <button
-                          onClick={(e) => deleteBookmark(b.id, e)}
-                          className="text-[#2C2C2B]/35 hover:text-red-700 p-1 rounded-md transition-colors absolute top-3 right-3 cursor-pointer"
-                          title="移出此卷"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <p className="font-sans text-[10px] font-light text-[#2C2C2B]/60 leading-relaxed line-clamp-2">
-                        {b.text}
-                      </p>
-
-                      <div className="flex justify-between items-center text-[9px] font-serif text-[#2C2C2B]/40 pt-1 border-t border-[#2C2C2B]/5">
-                        <span className="not-italic bg-[#8C927F]/10 text-[#8C927F] font-sans px-1.5 py-0.5 rounded-sm">
-                          {b.mode === "A" ? "单卷品藻" : b.mode === "B" ? "对照文段" : "风格诊断"}
-                        </span>
-                        <span>{b.timestamp}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Drawer stats panel */}
-              <div className="p-6 bg-[#F9F8F3] border-t border-[#2C2C2B]/10 text-center">
-                <p className="font-sans text-[9px] font-light text-[#2C2C2B]/50">
-                  档案馆采用本地沙盒（LocalStorage）进行词章密件级存储。
-                  <br />
-                  清除浏览器历史缓存或更换设备会导致收藏文卷清空。
-                </p>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <ArchiveDrawer
+        archiveOpen={archiveOpen}
+        bookmarks={bookmarks}
+        onClose={() => setArchiveOpen(false)}
+        onRestore={restoreBookmark}
+        onDelete={deleteBookmark}
+      />
 
     </div>
-  );
-}
