@@ -2120,7 +2120,7 @@ export default function App() {
 
           {/* TAB C: 写作诊断 */}
           {activeTab === "C" && (
-            <div className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
+            <div ref={tabCReportRef} className="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
               
               {/* Left Column: Author Input draft sheet */}
               <div className="lg:col-span-5 space-y-6">
@@ -2161,6 +2161,21 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+
+                {diagnosisReport && (
+                  <div className="bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between min-h-[520px]">
+                    <div>
+                      <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">自审美学轴系</h3>
+                      <p className="font-mono text-[8px] text-center text-[#2C2C2B]/40 uppercase tracking-widest mb-4">Diagnosis Axis</p>
+                    </div>
+                    <RadarChart data={mapScoresToRadar(diagnosisReport.scores)} colorA="#2C2C2B" />
+                    <div className="text-center mt-4">
+                      <span className="text-[10px] font-serif text-[#2C2C2B]/80 bg-[#E3D5CA]/40 px-2 py-0.5 rounded-sm border border-[#E3D5CA]/60">
+                        表演性质: {diagnosisReport.scores.honesty.value}% (越低越诚实)
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Column: Diagnosis Report */}
@@ -2173,24 +2188,8 @@ export default function App() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -15 }}
                     >
-                      <div ref={tabCReportRef} className="p-4 bg-[#FDFCF8] rounded-2xl border border-[#2C2C2B]/5 relative space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                          {/* Left: Axis Projections */}
-                          <div className="md:col-span-12 lg:col-span-6 bg-[#F9F8F3] p-6 rounded-2xl border border-[#2C2C2B]/10 shadow-xs flex flex-col justify-between">
-                            <div>
-                              <h3 className="font-serif text-sm font-medium mb-1 text-center text-[#2C2C2B]">自审美学轴系</h3>
-                              <p className="font-mono text-[8px] text-center text-[#2C2C2B]/40 uppercase tracking-widest mb-4">Diagnosis Axis</p>
-                            </div>
-                            <RadarChart data={mapScoresToRadar(diagnosisReport.scores)} colorA="#2C2C2B" />
-                            <div className="text-center mt-3">
-                              <span className="text-[10px] font-serif text-[#2C2C2B]/80 bg-[#E3D5CA]/40 px-2 py-0.5 rounded-sm border border-[#E3D5CA]/60">
-                                表演性质: {diagnosisReport.scores.honesty.value}% (越低越诚实)
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Right: Concrete Suggestions */}
-                          <div className="md:col-span-12 lg:col-span-6 space-y-6">
+                      <div className="p-4 bg-[#FDFCF8] rounded-2xl border border-[#2C2C2B]/5 relative space-y-6">
+                        <div className="space-y-6">
                             
                             {/* Lingering feedback */}
                             <div className={`p-5 rounded-2xl ${getFlavorBgClass(diagnosisReport.lingeringType)} relative`}>
@@ -2261,7 +2260,6 @@ export default function App() {
                               </p>
                             </div>
 
-                          </div>
                         </div>
 
                         {/* Scholar's independent verdict section */}
