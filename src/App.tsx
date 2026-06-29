@@ -19,6 +19,7 @@ import {
   Check
 } from "lucide-react";
 import html2canvas from "html2canvas";
+import { Analytics } from "@vercel/analytics/react";
 import RadarChart from "./components/RadarChart";
 import { PRESET_SAMPLES, PRES_COMPARE_SAMPLES, STYLE_VIBES } from "./data";
 import { exportPosterImage } from "./exportPoster";
@@ -2826,6 +2827,8 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+
+      <Analytics />
 
     </div>
   );
